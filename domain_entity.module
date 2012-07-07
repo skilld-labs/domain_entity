@@ -37,32 +37,30 @@ function domain_entity_allowed_entity_types() {
 *
 * @param $entity_type
 */
-function domain_entity_entity_type_access_query_alter(&$query, $entity_type) {
-  // removing the field type from allowed types, but not the hook_access ?
-  if (!in_array($entity_type, domain_entity_allowed_entity_types())) {
-    return;
-  }
-  $domain = domain_get_domain();
-  $entity_info = entity_get_info($entity_type);
-  $entity_key = $entity_info['entity keys']['id'];
-  $field_instance_name = domain_entity_entity_field_instance($entity_type);
+function domain_entity_query_alter(&$query) {
+  if(method_exists($query, 'getMetaData')) {
+    if (!$base_table = $query->getMetaData('base_table')) {
+      // Assume that the base table if the first table if not set. It will result
+      // in an invalid query if the first table is not the table we expect,
+      // forcing the caller to actually properly pass a base table in that case.
+      $tables = &$query->getTables();
+      $base_table = key($tables);
+    }
+    // have we to check access for this entity types
+    if (!in_array($base_table, domain_entity_allowed_entity_types())) {
+      return;
+    }
 
-  if (!$base_table = $query->getMetaData('base_table')) {
-    // Assume that the base table if the first table if not set. It will result
-    // in an invalid query if the first table is not the table we expect,
-    // forcing the caller to actually properly pass a base table in that case.
-    $tables = &$query->getTables();
-    $base_table = key($tables);
-  }
-  // don't break access to the parent of this relationship
-  // need review here
-  if ($base_table != $entity_type) {
-    return;
-  }
+    $entity_type = $base_table;
+    $domain = domain_get_domain();
+    $entity_info = entity_get_info($entity_type);
+    $entity_key = $entity_info['entity keys']['id'];
+    $field_instance_name = domain_entity_entity_field_instance($entity_type);
 
-  // add our access condition
-  $query->leftJoin('field_data_' . $field_instance_name, 'dom', $base_table . '.' . $entity_key . ' = %alias.entity_id');
-  $query->condition('dom.' . $field_instance_name . '_domain_id', $domain['domain_id'], '=');
+    // add our access condition
+    $query->leftJoin('field_data_' . $field_instance_name, 'dom', $base_table . '.' . $entity_key . ' = %alias.entity_id');
+    $query->condition('dom.' . $field_instance_name . '_domain_id', $domain['domain_id'], '=');
+  }
 }
 
 /**
@@ -73,8 +71,9 @@ function domain_entity_entity_type_access_query_alter(&$query, $entity_type) {
  */
 function domain_entity_entity_presave($entity, $type) {
   // Check if it's an allowed entity types
+
   $allowed_entity_types = domain_entity_allowed_entity_types();
-  if(!in_array($type, $allowed_entity_types)) {
+  if (!in_array($type, $allowed_entity_types)) {
     return;
   }
   // Get domain_entity field type instances
@@ -82,10 +81,11 @@ function domain_entity_entity_presave($entity, $type) {
   $domain = domain_get_domain();
 
   if (isset($entity->$field_instance)) {
+
     // populate each field instance with the current domain ID,
     // if is not already set or unassigned
     $value = $entity->$field_instance;
-    if(!isset($value[LANGUAGE_NONE][0]) || empty($value) || $value[LANGUAGE_NONE][0]['domain_id'] == 0) {
+    if (!isset($value[LANGUAGE_NONE][0]) || empty($value) || $value[LANGUAGE_NONE][0]['domain_id'] == 0) {
       $value[LANGUAGE_NONE] = array(
         0 => array(
           'domain_id' => $domain['domain_id']
@@ -102,6 +102,7 @@ function domain_entity_entity_presave($entity, $type) {
       ),
     );
   }
+  return $entity;
 }
 
 /**
@@ -350,7 +351,7 @@ function domain_entity_types_enable_domain_field($entity_types) {
   $required = FALSE;
   // create fields instance
   foreach ($entity_types as $entity_type) {
-    $field_name = $entity_type . '_domain';
+    $field_name = substr('_' . md5($entity_type . '_domain'), 0, -1);
     $entity_info = entity_get_info($entity_type);
     $bundles = $entity_info['bundles'];
     foreach ($bundles as $bundle => $bundle_info) {
