@@ -1,0 +1,361 @@
+<?php
+
+/**
+ * @file
+ * Defines fields (e.g. domain_entity) for entities
+ */
+
+/**
+* Return the list of the domain_entity fieldable entity types
+*
+* Other module can use hook_domain_entity_allowed_entity_types_alter,
+* to add other entity types, just doing that is not enough to enable the domain filter,
+* an instance of the field type domain_entity must be created for new entity_type
+* @see domain_entity_types_enable_domain_field(array('entity_type', ...));
+*
+* @return array list of entity types
+*/
+function domain_entity_allowed_entity_types() {
+  // First check the static cache for a domain_entity allowed entity types array.
+  $domain_entity_allowed_entity_types = &drupal_static(__FUNCTION__);
+
+  // If it did not exist, fetch the types now.
+  if (!isset($domain_entity_allowed_entity_types)) {
+    $domain_entity_allowed_entity_types = array();
+    drupal_alter('domain_entity_allowed_entity_types', $domain_entity_allowed_entity_types);
+  }
+
+  return $domain_entity_allowed_entity_types;
+}
+
+/**
+* Alter an entity access query, add Commerce Domain Access Rules
+*
+* Can be called by modules implementing entity domain access.
+* Must be called for the entity specific access query,
+* inside a hook_query_alter or hook_query_TAG_alter
+*
+* @param $entity_type
+*/
+function domain_entity_entity_type_access_query_alter(&$query, $entity_type) {
+  // removing the field type from allowed types, but not the hook_access ?
+  if (!in_array($entity_type, domain_entity_allowed_entity_types())) {
+    return;
+  }
+  $domain = domain_get_domain();
+  $entity_info = entity_get_info($entity_type);
+  $entity_key = $entity_info['entity keys']['id'];
+  $field_instance_name = domain_entity_entity_field_instance($entity_type);
+
+  if (!$base_table = $query->getMetaData('base_table')) {
+    // Assume that the base table if the first table if not set. It will result
+    // in an invalid query if the first table is not the table we expect,
+    // forcing the caller to actually properly pass a base table in that case.
+    $tables = &$query->getTables();
+    $base_table = key($tables);
+  }
+  // don't break access to the parent of this relationship
+  // need review here
+  if ($base_table != $entity_type) {
+    return;
+  }
+
+  // add our access condition
+  $query->leftJoin('field_data_' . $field_instance_name, 'dom', $base_table . '.' . $entity_key . ' = %alias.entity_id');
+  $query->condition('dom.' . $field_instance_name . '_domain_id', $domain['domain_id'], '=');
+}
+
+/**
+ * Implements hook_entity_presave
+ *
+ * @param Entity $entity
+ * @param $type
+ */
+function domain_entity_entity_presave($entity, $type) {
+  // Check if it's an allowed entity types
+  $allowed_entity_types = domain_entity_allowed_entity_types();
+  if(!in_array($type, $allowed_entity_types)) {
+    return;
+  }
+  // Get domain_entity field type instances
+  $field_instance = domain_entity_entity_field_instance($type);
+  $domain = domain_get_domain();
+
+  if (isset($entity->$field_instance)) {
+    // populate each field instance with the current domain ID,
+    // if is not already set or unassigned
+    $value = $entity->$field_instance;
+    if(!isset($value[LANGUAGE_NONE][0]) || empty($value) || $value[LANGUAGE_NONE][0]['domain_id'] == 0) {
+      $value[LANGUAGE_NONE] = array(
+        0 => array(
+          'domain_id' => $domain['domain_id']
+        )
+      );
+      // Save domain_entity field value into entity
+      $entity->$field_instance = $value;
+    }
+  } else {
+    $entity->$field_instance = array(
+      LANGUAGE_NONE => array (
+        0 => array(
+        'domain_id' => $domain['domain_id']),
+      ),
+    );
+  }
+}
+
+/**
+ * Get the list of domain_entity field type instances
+ * @return Array of key(field_id) => field_instance_name
+ */
+function domain_entity_field_instances() {
+  // First check the static cache for a domain_entity field instances array.
+  $domain_entity_field_instances = &drupal_static(__FUNCTION__);
+
+  // If it did not exist, fetch the types now.
+  if (!isset($domain_entity_field_instances)) {
+    $query = db_select('field_config', 'fc');
+    $query->condition('fc.type', 'domain_entity', '=');
+    $query->condition('fc.active', TRUE, '=');
+    $query->fields('fc', array('id', 'field_name'));
+    $domain_entity_field_instances = $query->execute()->fetchAll(PDO::FETCH_KEY_PAIR);
+  }
+
+  return $domain_entity_field_instances;
+}
+
+/**
+* Get the list of domain_entity field type instances
+* @return String the name of the bundle field instance
+*/
+function domain_entity_entity_field_instance($entity_type) {
+  // First check the static cache for a domain_entity field instances array.
+  $domain_entity_entity_field_instance = &drupal_static(__FUNCTION__);
+
+  // If it did not exist, init the array.
+  if (!isset($domain_entity_entity_field_instance)) {
+    $domain_entity_entity_field_instance = array();
+  }
+  // look for the instance for this type if it's not done
+  if (!isset($domain_entity_entity_field_instance[$entity_type])) {
+    $domain_entity_field_instances = domain_entity_field_instances();
+    $query = db_select('field_config_instance', 'fci');
+    $query->condition('fci.entity_type', $entity_type, '=');
+    $query->condition('fci.field_name', $domain_entity_field_instances, 'IN');
+    $query->fields('fci', array('field_name'));
+    $domain_entity_entity_field_instance[$entity_type] = $query->execute()->fetchField();
+  }
+
+  return $domain_entity_entity_field_instance[$entity_type];
+}
+
+/**
+ * Implements hook_field_info().
+ */
+function domain_entity_field_info() {
+  return array(
+    'domain_entity' => array(
+      'label' => t('Domain'),
+      'description' => t('This field stores automatically the current domain ID and is never shown to the front-end user.'),
+      'settings' => array(),
+      'instance_settings' => array(),
+      'default_widget' => 'domain_entity_auto_hidden',
+      'default_formatter' => 'domain_entity_formatted',
+      'property_type' => 'domain_entity',
+      'property_callbacks' => array('domain_entity_property_info_callback'),
+    ),
+  );
+}
+
+/**
+* Implements hook_field_widget_error().
+*/
+function domain_entity_field_widget_error($element, $error, $form, &$form_state) {
+  if ($error['error'] == 'domain_entity') {
+    form_error($element['domain_id'], $error['message']);
+  }
+}
+
+/**
+* Implements of hook_field_is_empty().
+*/
+function domain_entity_field_is_empty($item, $field) {
+  if ($field['type'] == 'domain_entity') {
+    return !isset($item['domain_id']) || $item['domain_id'] == NULL;
+  }
+}
+
+/**
+* Implements hook_field_widget_info().
+*/
+function domain_entity_field_widget_info() {
+  return array(
+    'domain_entity_auto_hidden' => array(
+      'label' => t('auto/hidden'),
+      'field types' => array('domain_entity'),
+    ),
+  );
+}
+
+/**
+* Implements hook_field_widget_form().
+*/
+function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $widget = $instance['widget'];
+  // Return the domain_id textfield widget.
+  if ($widget['type'] == 'domain_entity_auto_hidden') {
+    // Determine the default domain_id value.
+    if (isset($items[$delta]['domain_id'])) {
+      $domain_id = $items[$delta]['domain_id'];
+    }
+    else {
+      $domain_id = 0; // Unassigned domain
+    }
+
+    // Add a hidden field for the actual domain_id value.
+    $element['domain_id'] = array(
+      '#type' => 'hidden',
+      '#title' => $element['#title'],
+      '#default_value' => $domain_id,
+      '#size' => 15,
+      '#maxlength' => 16,
+      '#required' => $instance['required'] && ($delta == 0 || $field['cardinality'] > 0),
+    );
+
+    return $element;
+  }
+}
+
+/**
+* Implements hook_field_formatter_info().
+*/
+function domain_entity_field_formatter_info() {
+  return array(
+    'domain_entity_formatted' => array(
+      'label' => t('Hidden (domain id)'),
+      'field types' => array('domain_entity'),
+      'settings' => array(),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function domain_entity_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $settings = array_merge(field_info_formatter_settings($display['type']), $display['settings']);
+
+  $element = array();
+  // Loop through each item in this field.
+  foreach ($items as $delta => $item) {
+    $element[$delta] = array(
+      '#type' => 'hidden',
+    );
+  }
+
+  return $element;
+}
+
+/**
+* Callback to alter the property info of domain fields.
+*
+* @see domain_entity_field_info().
+*/
+function domain_entity_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
+  $name = $field['field_name'];
+  $property = &$info[$entity_type]['bundles'][$instance['bundle']]['properties'][$name];
+
+  $property['type'] = ($field['cardinality'] != 1) ? 'list<domain_entity>' : 'domain_entity';
+  $property['getter callback'] = 'entity_metadata_field_verbatim_get';
+  $property['setter callback'] = 'entity_metadata_field_verbatim_set';
+  $property['property info'] = domain_entity_field_data_property_info($name);
+
+  unset($property['query callback']);
+  unset($property['auto creation']);
+}
+
+/**
+ * Defines info for the properties of the domain_entity field data structure.
+ */
+function domain_entity_field_data_property_info($name = NULL) {
+  return array(
+    'domain_id' => array(
+      'label' => t('Domain ID'),
+      'description' => !empty($name) ? t('Domain ID value of field %name', array('%name' => $name)) : '',
+      'type' => 'int',
+      'getter callback' => 'entity_property_verbatim_get',
+      'setter callback' => 'entity_property_verbatim_set',
+    ),
+  );
+}
+
+/**
+ * Create a field instance
+ * @param $field_name
+ * @param $field_type
+ * @param $required
+ * @param $entity_type
+ * @param $bundle
+ * @param $label
+ * @param $description
+ * @param $weight
+ */
+function domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, $description = NULL, $weight = 0) {
+  // Look for or add the specified stock field to the requested entity bundle.
+  $field = field_info_field($field_name);
+  $instance = field_info_instance($entity_type, $field_name, $bundle);
+
+  if (empty($field)) {
+    $field = array(
+        'field_name' => $field_name,
+        'type' => $field_type,
+        'cardinality' => 1,
+        'entity_types' => array($entity_type),
+        'translatable' => FALSE,
+        'locked' => FALSE,
+    );
+    $field = field_create_field($field);
+  }
+
+  if (empty($instance)) {
+    $instance = array(
+        'field_name' => $field_name,
+        'entity_type' => $entity_type,
+        'bundle' => $bundle,
+        'label' => $label,
+        'required' => $required,
+        'settings' => array(),
+        'display' => array(),
+        'description' => $description,
+        'default_value' => array(array('value' => 0)),
+    );
+
+    $entity_info = entity_get_info($entity_type);
+
+    // Spoof the default view mode so its display type is set.
+    $entity_info['view modes']['default'] = array();
+
+    field_create_instance($instance);
+  }
+}
+
+/**
+ * Helper function to active the domain field on all bundle of a list of entity type
+ * @param unknown_type $entity_types
+ */
+function domain_entity_types_enable_domain_field($entity_types) {
+  // common settings
+  $field_type = 'domain_entity';
+  $label = t('Domain');
+  $required = FALSE;
+  // create fields instance
+  foreach ($entity_types as $entity_type) {
+    $field_name = $entity_type . '_domain';
+    $entity_info = entity_get_info($entity_type);
+    $bundles = $entity_info['bundles'];
+    foreach ($bundles as $bundle => $bundle_info) {
+      domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label);
+      drupal_set_message(t('Domain Access has been enabled on the bundle @type of @entity entity type', array('@type' => $bundle, '@entity' => $entity_type)));
+    }
+  }
+}

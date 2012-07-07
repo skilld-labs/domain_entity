@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * Implements hook_field_schema().
+ */
+function domain_entity_field_schema($field) {
+  if ($field['type'] == 'domain_entity') {
+    return array(
+      'columns' => array(
+        'domain_id' => array(
+          'description' => 'The numeric unique ID of the domain.',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+        ),
+      ),
+      'indexes' => array(
+        'domain_id' => array('domain_id'),
+      ),
+    );
+  }
+}
