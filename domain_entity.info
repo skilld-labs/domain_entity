@@ -1,7 +1,7 @@
 name = Domain Access Entity
 project = "domain_entity"
 description = Defines Domain access for entities
-package = Commerce (contrib)
+package = Domain Access (contrib)
 core = 7.x
 
 dependencies[] = domain
