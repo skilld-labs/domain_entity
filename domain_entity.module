@@ -535,10 +535,10 @@ function domain_entity_types_enable_domain_field($entity_types) {
 }
 
 /**
-* Implement hook_entity_info_alter
-* Make sure entities hacked by domain_entity are fieldable
-* @param $entity_info
-*/
+ * Implement hook_entity_info_alter
+ * Make sure entities hacked by domain_entity are fieldable
+ * @param $entity_info
+ */
 function commerce_domain_entity_info_alter(&$entity_info) {
   $entities = domain_entity_allowed_entity_types();
   foreach ($entities as $entity_name => $entity_bundles) {

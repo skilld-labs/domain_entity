@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Domain Access Entity settings form
+ * @param $form
+ * @param $form_state
+ */
 function domain_entity_ui($form, &$form_state) {
   // get the domain_entity_allowed_entity_types values
   $default_values = domain_entity_allowed_entity_types();
@@ -94,23 +99,22 @@ function domain_entity_ui($form, &$form_state) {
 }
 
 /**
-* Ajax form callback,
-* populate the 'user_message' form element
-*/
+ * Ajax form callback,
+ */
 function domain_entity_ui_form_ajax_callback($form, $form_state) {
   return $form['entities'];
 
 }
 
 /**
-* Validate handler for the domain overview form.
-*
+ * Validate handler for the domain overview form.
+ *
 function domain_entity_ui_validate($form, &$form_state) {
 
 }//*/
 
 /**
- * Submit handler for the domain overview form.
+ * Submit handler for the domain entity form.
  */
 function domain_entity_ui_submit($form, &$form_state) {
   $values = $form_state['values'];
