@@ -518,6 +518,7 @@ function domain_entity_types_enable_domain_field($entity_types) {
           $id = $value->$entity_key;
           $entities_to_update[] = entity_load($entity_type, array($id));
         }
+        // restore entity type domain access
         variable_set('domain_entity_allowed_entity_types', $domain_entity_allowed_entity_types_backup);
       }
     }
@@ -525,12 +526,13 @@ function domain_entity_types_enable_domain_field($entity_types) {
       domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, $widget);
       drupal_set_message(t('Domain Access behaviour \'@widget\' has been enabled on the bundle @type of @entity entity type', array('@widget' => $widget, '@type' => $bundle, '@entity' => $entity_type)));
     }
+    field_cache_clear();
     foreach ($entities_to_update as $key => $entity_to_update) {
       $id = key($entity_to_update);
       entity_save($entity_type, $entity_to_update[$id]);
     }
   }
-  // restore entity type domain access
+
 
 }
 

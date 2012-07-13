@@ -15,6 +15,8 @@ function domain_entity_ui($form, &$form_state) {
   unset($entities_info['user']);
   // don't know too much about file entity.., for the moment disable it:
   unset($entities_info['file']);
+  // don't know too much about file entity.., for the moment disable it:
+  unset($entities_info['taxonomy_vocabulary']);
   // Set the form.
   $form = array();
   $form['header'] = array(
@@ -50,7 +52,7 @@ function domain_entity_ui($form, &$form_state) {
         '#title' => t('Choose wich behavior Domain entity must use with bundle @bundle_label (\'@bundle_name\')', array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#type' => 'select',
         '#options' => $domain_entity_options,
-        '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array($default_values[$entity_name][$bundle_name] => $default_values[$entity_name][$bundle_name]) : NULL
+        '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array($default_values[$entity_name][$bundle_name] => $default_values[$entity_name][$bundle_name]) : array(DOMAIN_ENTITY_BEHAVIOR_USER => DOMAIN_ENTITY_BEHAVIOR_USER)
       );
     }
     if (isset($form_state['triggering_element'])) {
@@ -126,6 +128,7 @@ function domain_entity_ui_submit($form, &$form_state) {
   unset($entities_info['user']);
   // don't know too much about file entity.., for the moment disable it:
   unset($entities_info['file']);
+  unset($entities_info['taxonomy_vocabulary']);
   $domain_entity_allowed_entity_types = array();
   foreach ($entities_info as $entity_name => $entity_info) {
     if($values[$entity_name . '_value']) {
