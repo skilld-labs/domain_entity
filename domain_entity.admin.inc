@@ -15,7 +15,7 @@ function domain_entity_ui($form, &$form_state) {
   unset($entities_info['user']);
   // don't know too much about file entity.., for the moment disable it:
   unset($entities_info['file']);
-  // don't know too much about file entity.., for the moment disable it:
+  // don't know too much about taxonomy vocabulary entity.., for the moment disable it:
   unset($entities_info['taxonomy_vocabulary']);
   // Set the form.
   $form = array();
@@ -126,7 +126,7 @@ function domain_entity_ui_submit($form, &$form_state) {
   unset($entities_info['node']);
   // I think this necessit an other module (login, register handling.. to be tested):
   unset($entities_info['user']);
-  // don't know too much about file entity.., for the moment disable it:
+  // don't know too much about taxonomy vocabulary entity.., for the moment disable it:
   unset($entities_info['file']);
   unset($entities_info['taxonomy_vocabulary']);
   $domain_entity_allowed_entity_types = array();
@@ -143,5 +143,27 @@ function domain_entity_ui_submit($form, &$form_state) {
   domain_entity_types_enable_domain_field($domain_entity_allowed_entity_types);
 }
 
-
-
+/**
+ * Return the filter administration pages entities widget
+ */
+function domain_entity_domain_switcher_get_content() {
+  $links = array();
+  $domains = domain_domains();
+  global $user;
+  $user_granted_domain_ids = domain_get_user_domains($user);
+  foreach ($domains as $domain) {
+    if (in_array($domain['domain_id'], $user_granted_domain_ids)) {
+      if(isset($_GET['domain']) && $domain['domain_id'] == $_GET['domain']) {
+        $links[] = '<strong>' . t('This page are listing only entites affiliated from the site: @sitename', array('@sitename' => $domain['sitename'])) . '</strong>';
+      } else {
+        $links[] = l(t('See only entity affiliated from the site @sitename on this page', array('@sitename' => $domain['sitename'])), current_path(), array('query' => array('domain' => $domain['domain_id'])));
+      }
+    }
+  }
+  return theme_item_list(array(
+    'items' =>$links,
+    'attributes' => array(),
+    'title' => '',
+    'type' => 'ul'
+  ));
+}

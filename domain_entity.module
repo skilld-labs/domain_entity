@@ -2,7 +2,8 @@
 
 /**
  * @file
- * Defines fields (e.g. domain_entity) for entities
+ * Defines field (e.g. domain_entity) for entities
+ * and access query alter
  */
 
 /**
@@ -34,6 +35,49 @@ function domain_entity_menu() {
   );
 
   return $items;
+}
+
+/**
+ * Implements hook_block_info
+ */
+function domain_entity_block_info() {
+  $blocks = array();
+  $blocks['domain_entity_domain_switcher'] = array(
+    'info' => t('Domain Access Entity administration pages filtering'),
+    'weight' => 0,
+    'visibility' => BLOCK_VISIBILITY_NOTLISTED,
+    'cache' => DRUPAL_NO_CACHE,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view
+ */
+function domain_entity_block_view($delta = '') {
+  $block = array();
+  if ($delta == 'domain_entity_domain_switcher' && user_access('access entities affiliate on assigned domains') && path_is_admin(current_path())) {
+    global $user;
+    if (count(domain_get_user_domains($user)) > 1) {
+      include_once 'domain_entity.admin.inc';
+      $block['subject'] = '';
+      $block['content'] = domain_entity_domain_switcher_get_content();
+    }
+  }
+  return $block;
+}
+
+/*
+ * Define domain entity permissions
+ */
+function domain_entity_permission() {
+  return array(
+    'access entities affiliate on assigned domains' => array(
+      'title' => t('access and filter entities affiliate on user\'s assigned domains'),
+      'description' => t('Allow an editor of multiple domains to access and filter administration page entities by domain.'),
+      'restrict access' => TRUE
+    ),
+  );
 }
 
 /**
@@ -77,9 +121,7 @@ function domain_entity_allowed_entity_types_base_tables() {
  * @param $entity_type
  */
 function domain_entity_query_alter(&$query) {
-  if (user_access('set domain access')) {
-    return;
-  }
+
 
   if (method_exists($query, 'getTables')) {
     $tables = $query->getTables();
@@ -94,16 +136,16 @@ function domain_entity_query_alter(&$query) {
 
     // this is an active domain entity, prepare our custom access conditions
     $entity_type = $domain_entity_bases_table[$base_table];
-    $domain = domain_get_domain();
-    $accessible_domain_ids = array($domain['domain_id']);
-    if (user_access('publish to any assigned domain')) {
-      global $user;
-      $user_granted_domain_ids = domain_get_user_domains($user);
-      foreach ($user_granted_domain_ids as $domain_id) {
-        $accessible_domain_ids[] = $domain_id;
+
+    global $user;
+    $current_domain = domain_get_domain();
+    $accessible_domain_ids = array($current_domain['domain_id']);
+    if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
+      $accessible_domain_ids = domain_get_user_domains($user);
+      if(isset($_GET['domain']) && in_array($_GET['domain'], $accessible_domain_ids)) {
+        $accessible_domain_ids = array($_GET['domain']);
       }
     }
-
     $entity_info = entity_get_info($entity_type);
     $entity_key = $entity_info['entity keys']['id'];
     $field_instance = domain_entity_entity_field_instance($entity_type);
@@ -276,43 +318,54 @@ function domain_entity_field_widget_error($element, $error, $form, &$form_state)
 function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $widget = $instance['widget'];
   $current_domain = domain_get_domain();
-  // Return the domain_id textfield widget.
-  if ($widget['type'] == DOMAIN_ENTITY_BEHAVIOR_AUTO || $widget['type'] == DOMAIN_ENTITY_BEHAVIOR_USER) {
-    // Determine the default domain_id value.
-    $default_value = array();
-    $delta = 0;
-    $site_domains = domain_domains();
-    $checkboxes = array();
 
-    foreach ($site_domains as $site_domain) {
-      $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
-      if (isset($items[$delta]) && !empty($items[$delta]) && isset($items[$delta]['domain_id']) && $items[$delta]['domain_id'] == $site_domain['domain_id']) {
-        $default_value[$site_domain['domain_id']] = $site_domain['domain_id'];
-      } elseif (isset($items[$delta]) && !empty($items[$delta])) {
-        $default_value[$site_domain['domain_id']] = 0;
-      }
-      $delta++;
-    }
-    // set the current domain as default value if no default value has been sent :
-    if (!isset($items[$delta]) || empty($items[$delta]) || !isset($items[$delta]['domain_id'])) {
-      $default_value[$current_domain['domain_id']] = $current_domain['domain_id'];
-    }
 
-    // Add a checkboxes for domain id's:
-    $element['domain_id'] = array(
-      '#type' => 'checkboxes',
-      '#options' => $checkboxes,
-      '#title' => t('Domain'),
-      '#default_value' => $default_value,
-      '#required' => TRUE,
-      '#element_validate' => array('domain_entity_widget_multiple_values_form_validate'),
-      '#entity_type' => $instance['entity_type'],
-    );
-    if($widget['type'] == DOMAIN_ENTITY_BEHAVIOR_AUTO) {
-      $element['domain_id']['#access'] = FALSE;
-    }
-    return $element;
+  $site_domains = domain_domains();
+  $checkboxes = array();
+  foreach ($site_domains as $site_domain) {
+    $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
   }
+
+  // set the current domain as default value if no default value has been sent :
+  $default_value = array();
+  if (!isset($items[0]) || empty($items[0]) || !isset($items[0]['domain_id'])) {
+    $default_value[$current_domain['domain_id']] = $current_domain['domain_id'];
+  } else {
+    foreach($items as $delta => $item) {
+      $default_value[$item['domain_id']] = $item['domain_id'];
+    }
+  }
+
+  // Add a checkboxes for domain id's:
+  $element['domain_id'] = array(
+    '#type' => 'checkboxes',
+    '#options' => $checkboxes,
+    '#title' => t('Domain'),
+    '#default_value' => $default_value,
+    '#required' => TRUE,
+    '#element_validate' => array('domain_entity_widget_multiple_values_form_validate'),
+    '#entity_type' => $instance['entity_type'],
+  );
+
+  // Disable the domain checkbox that the user cannot edit.
+  global $user;
+  $user_granted_domain_ids = domain_get_user_domains($user);
+  $is_editable = TRUE;
+  foreach ($site_domains as $domain) {
+    if(!in_array($domain['domain_id'], $user_granted_domain_ids)) {
+      $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
+      $is_editable = FALSE;
+    } else {
+      $is_editable = TRUE;
+    }
+  }
+  if(!$is_editable) {
+    $element['domain_id']['#disabled'] = TRUE;
+  }
+  if ($widget['type'] == DOMAIN_ENTITY_BEHAVIOR_AUTO) {
+    $element['domain_id']['#access'] = FALSE;
+  }
+  return $element;
 }
 
 /**
@@ -327,9 +380,7 @@ function domain_entity_widget_multiple_values_form_validate($element, &$form_sta
   if (!in_array($entity_type, array_keys(domain_entity_allowed_entity_types()))) {
     return;
   }
-
   $values = $element['#value'];
-
   $active_domain = array();
   foreach ($values as $domain_id => $active) {
     if($active) {
@@ -356,36 +407,6 @@ function domain_entity_form_field_ui_field_edit_form_alter(&$form, &$form_state,
     $form['field']['cardinality']['#disabled'] = TRUE;
     $form['field']['cardinality']['#description'] = t('This field widget allow only unlimited values (in fact it will be the number of active domain).');
   }
-}
-
-/**
- * Implements hook_field_formatter_info().
- */
-function domain_entity_field_formatter_info() {
-  return array(
-    'domain_entity_formatted' => array(
-      'label' => t('Hidden (domain id)'),
-      'field types' => array('domain_entity'),
-      'settings' => array(),
-    ),
-  );
-}
-
-/**
- * Implements hook_field_formatter_view().
- */
-function domain_entity_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
-  $settings = array_merge(field_info_formatter_settings($display['type']), $display['settings']);
-
-  $element = array();
-  // Loop through each item in this field.
-  foreach ($items as $delta => $item) {
-    $element[$delta] = array(
-      '#type' => 'hidden',
-    );
-  }
-
-  return $element;
 }
 
 /**
@@ -496,9 +517,8 @@ function domain_entity_types_enable_domain_field($entity_types) {
   $field_type = 'domain_entity';
   $label = t('Domain');
   $required = TRUE;
+
   // create fields instance
-
-
   foreach ($entity_types as $entity_type => $bundles) {
     $field_name = 'domain_' . $entity_type;
     if (strlen($field_name)> 21) {
@@ -512,6 +532,7 @@ function domain_entity_types_enable_domain_field($entity_types) {
       $query->addField('b', $entity_key);
       $unaffiliated_entities = $query->execute()->fetchAll();
       if (!empty($unaffiliated_entities)) {
+        // bypass access restriction to allow the current user to access the entity that are not already assigned
         $domain_entity_allowed_entity_types_backup = variable_get('domain_entity_allowed_entity_types', array());
         variable_set('domain_entity_allowed_entity_types', array());
         foreach ($unaffiliated_entities as $key => $value) {
@@ -532,8 +553,6 @@ function domain_entity_types_enable_domain_field($entity_types) {
       entity_save($entity_type, $entity_to_update[$id]);
     }
   }
-
-
 }
 
 /**

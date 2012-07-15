@@ -3,6 +3,8 @@ project = "domain_entity"
 description = Defines Domain access for entities
 package = Domain Access (contrib)
 core = 7.x
+configure = admin/structure/domain/entities
 
 dependencies[] = domain
 dependencies[] = entity
+
