@@ -20,6 +20,9 @@ define('DOMAIN_ENTITY_BEHAVIOR_AUTO', 'domain_entity_auto_hidden');
  */
 define('DOMAIN_ENTITY_BEHAVIOR_USER', 'domain_entity_user_multiple_choice');
 
+/**
+ * Implements hook_menu
+ */
 function domain_entity_menu() {
   $items = array();
   // Register the batch actions as menu callbacks
@@ -67,7 +70,8 @@ function domain_entity_block_view($delta = '') {
   return $block;
 }
 
-/*
+/**
+ * Implements hook_permission
  * Define domain entity permissions
  */
 function domain_entity_permission() {
@@ -82,11 +86,6 @@ function domain_entity_permission() {
 
 /**
  * Return the list of the domain_entity fieldable entity types
- *
- * Other module can use hook_domain_entity_allowed_entity_types_alter,
- * to add other entity types, just doing that is not enough to enable the domain filter,
- * an instance of the field type domain_entity must be created for new entity_type
- * @see domain_entity_types_enable_domain_field(array('entity_type', ...));
  *
  * @return array list of entity types
  */
@@ -121,8 +120,6 @@ function domain_entity_allowed_entity_types_base_tables() {
  * @param $entity_type
  */
 function domain_entity_query_alter(&$query) {
-
-
   if (method_exists($query, 'getTables')) {
     $tables = $query->getTables();
     $base_table_alias = key($tables);
@@ -134,18 +131,28 @@ function domain_entity_query_alter(&$query) {
       return;
     }
 
-    // this is an active domain entity, prepare our custom access conditions
-    $entity_type = $domain_entity_bases_table[$base_table];
+    // this is an enabled domain entity,
+    // prepare our custom access conditions
 
+    // get the current user list of granted domain id:
+    // (the current domain id OR for middle-office editors: the list of assigned domain(s) id)
     global $user;
     $current_domain = domain_get_domain();
     $accessible_domain_ids = array($current_domain['domain_id']);
+    // Middle office editors with permission see in administration entity from her lists of assigned domains
+    // allowing editors to filtering administration page by domain id
     if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
       $accessible_domain_ids = domain_get_user_domains($user);
-      if(isset($_GET['domain']) && in_array($_GET['domain'], $accessible_domain_ids)) {
+      // editor filtering this page ?:
+      if(isset($_GET['domain']) && is_numeric($_GET['domain']) && in_array($_GET['domain'], $accessible_domain_ids)) {
+        // set the domain id to the filtered ones
         $accessible_domain_ids = array($_GET['domain']);
       }
     }
+
+    // get the entity_type for this base_table:
+    $entity_type = $domain_entity_bases_table[$base_table];
+    // get entity_type and field info:
     $entity_info = entity_get_info($entity_type);
     $entity_key = $entity_info['entity keys']['id'];
     $field_instance = domain_entity_entity_field_instance($entity_type);
