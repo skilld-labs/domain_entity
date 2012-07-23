@@ -81,6 +81,11 @@ function domain_entity_permission() {
       'description' => t('Allow an editor of multiple domains to access and filter administration page entities by domain.'),
       'restrict access' => TRUE
     ),
+    'set domain access status for all entities' => array(
+      'title' => t('Set domain access status for all entities'),
+      'description' => t('Allow user to access & set domain access for all entities.'),
+      'restrict access' => TRUE
+    ),
   );
 }
 
@@ -147,6 +152,12 @@ function domain_entity_query_alter(&$query) {
       if(isset($_GET['domain']) && is_numeric($_GET['domain']) && in_array($_GET['domain'], $accessible_domain_ids)) {
         // set the domain id to the filtered ones
         $accessible_domain_ids = array($_GET['domain']);
+      } else {
+        if (user_access('set domain access status for all entities')) {
+          // user can access to all entities in administration,
+          // and the page is not filtering, do not filter this query
+          return;
+        }
       }
     }
 
@@ -177,8 +188,12 @@ function domain_entity_entity_presave($entity, $type) {
     return;
   }
   // Get domain_entity field type instances:
-  $field_instance = domain_entity_entity_field_instance($type);
-  $field_instance_name = $field_instance['name'];
+  if($field_instance = domain_entity_entity_field_instance($type)) {
+    $field_instance_name = $field_instance['name'];
+  } else {
+    return FALSE;
+  }
+
   // get current domain:
   $current_domain = domain_get_domain();
   // ensure this entities have almost a default value.
@@ -249,10 +264,16 @@ function domain_entity_entity_field_instance($entity_type) {
     $query->condition('fci.field_name', $domain_entity_field_instances, 'IN');
     $query->fields('fci', array('field_name','data'));
     $field_instance = $query->execute()->fetchAll();
-    $domain_entity_entity_field_instance[$entity_type] = array(
-      'name' => $field_instance[0]->field_name,
-      'settings' => unserialize($field_instance[0]->data),
-    );
+    if(isset($field_instance[0])) {
+      $domain_entity_entity_field_instance[$entity_type] = array(
+        'name' => $field_instance[0]->field_name,
+        'settings' => unserialize($field_instance[0]->data),
+      );
+    } else {
+      return FALSE;
+    }
+
+
   }
 
   return $domain_entity_entity_field_instance[$entity_type];
@@ -354,20 +375,22 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     '#entity_type' => $instance['entity_type'],
   );
 
-  // Disable the domain checkbox that the user cannot edit.
-  global $user;
-  $user_granted_domain_ids = domain_get_user_domains($user);
-  $is_editable = TRUE;
-  foreach ($site_domains as $domain) {
-    if(!in_array($domain['domain_id'], $user_granted_domain_ids)) {
-      $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
-      $is_editable = FALSE;
-    } else {
-      $is_editable = TRUE;
+  if (!user_access('set domain access status for all entities')) {
+    // Disable the domain checkbox that the user cannot edit.
+    global $user;
+    $user_granted_domain_ids = domain_get_user_domains($user);
+    $is_editable = TRUE;
+    foreach ($site_domains as $domain) {
+      if(!in_array($domain['domain_id'], $user_granted_domain_ids)) {
+        $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
+        $is_editable = FALSE;
+      } else {
+        $is_editable = TRUE;
+      }
     }
-  }
-  if(!$is_editable) {
-    $element['domain_id']['#disabled'] = TRUE;
+    if(!$is_editable) {
+      $element['domain_id']['#disabled'] = TRUE;
+    }
   }
   if ($widget['type'] == DOMAIN_ENTITY_BEHAVIOR_AUTO) {
     $element['domain_id']['#access'] = FALSE;
