@@ -194,33 +194,55 @@ function domain_entity_entity_presave($entity, $type) {
     return FALSE;
   }
 
-  // get current domain:
+  // Get current domain:
   $current_domain = domain_get_domain();
-  // ensure this entities have almost a default value.
-  // attach it to current domain if the entity is created by bypassing entity creation form
-  // do not let an unset domain entity saved (or the entity became accessible everywhere)
-  if (isset($entity->$field_instance_name)) {
-    // populate field instance with the current domain ID,
-    // if is not already set or unassigned
-    $value = $entity->$field_instance_name;
-
-    if (empty($value) || !isset($value[LANGUAGE_NONE][0]) || !$value[LANGUAGE_NONE][0]['domain_id']) {
-      $value[LANGUAGE_NONE] = array(
-        0 => array(
-          'domain_id' => $current_domain['domain_id'],
-        )
+  $entity_info = entity_get_info($type);
+  // Get default bundle value
+  // e.g (all, current_domain, list(domain_id))
+  $bundle_key = $entity_info['entity keys']['bundle'];
+  $default_values = reset($allowed_entity_types[$type][$entity->$bundle_key]);
+  if (in_array('all', $default_values)) {
+    $values = array();
+    $domains = domain_domains();
+    foreach ($domains as $domain) {
+      $values[] = array(
+        'domain_id' => $domain['domain_id'],
       );
-      // Save domain_entity field value into entity
-      $entity->$field_instance_name = $value;
     }
-  } else {
-    $entity->$field_instance_name = array(
-      LANGUAGE_NONE => array (
-        0 => array(
+  }
+  elseif (in_array('current_domain', $default_values)) {
+    $values = array(
+      0 => array(
         'domain_id' => $current_domain['domain_id'],
-        ),
       ),
     );
+  }
+  else {
+    $values = array();
+    foreach ($default_values as $did) {
+      $values[] = array(
+        'domain_id' => $did,
+      );
+    }
+  }
+  // Ensure this entities have almost a default value.
+  // attach it to current domain if the entity is created by bypassing entity creation form
+  // do not let an unset domain entity saved (or the entity became inaccessible everywhere)
+  if (!isset($entity->$field_instance_name)) {
+    // populate field instance with the default bundle domain value,
+    // if is not already set or unassigned
+    $entity->$field_instance_name = array(
+      LANGUAGE_NONE => $values
+    );
+  } else {
+    // populate field instance with the default bundle domain value,
+    // if is not already set or unassigned
+    $value = $entity->$field_instance_name;
+    if (empty($value) || !isset($value[LANGUAGE_NONE][0]) || !$value[LANGUAGE_NONE][0]['domain_id']) {
+      $entity->$field_instance_name = array(
+        LANGUAGE_NONE => $values
+      );
+    }
   }
   return $entity;
 }
@@ -312,7 +334,7 @@ function domain_entity_field_is_empty($item, $field) {
 function domain_entity_field_widget_info() {
   return array(
     DOMAIN_ENTITY_BEHAVIOR_AUTO => array(
-      'label' => t('Affiliate automatically created entity to current domain'),
+      'label' => t('Affiliate automatically entities to a value'),
       'field types' => array('domain_entity'),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -321,7 +343,7 @@ function domain_entity_field_widget_info() {
     ),
     // this widget allow multiple domain attachment
     DOMAIN_ENTITY_BEHAVIOR_USER => array(
-      'label' => t('User choose affiliate (default value is current domain)'),
+      'label' => t('User choose entities affiliation (with a default value)'),
       'field types' => array('domain_entity'),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -347,17 +369,32 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
   $widget = $instance['widget'];
   $current_domain = domain_get_domain();
 
-
+  $allowed_entity_types = domain_entity_allowed_entity_types();
   $site_domains = domain_domains();
   $checkboxes = array();
   foreach ($site_domains as $site_domain) {
     $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
   }
 
-  // set the current domain as default value if no default value has been sent :
+  // set the domain default value if no value has been set :
   $default_value = array();
   if (!isset($items[0]) || empty($items[0]) || !isset($items[0]['domain_id'])) {
-    $default_value[$current_domain['domain_id']] = $current_domain['domain_id'];
+    // Get default bundle value
+    // e.g (all, current_domain, list(domain_id))
+    $default_bundle_values = reset($allowed_entity_types[$instance['entity_type']][$instance['bundle']]);
+    if (in_array('all', $default_bundle_values)) {
+      foreach ($site_domains as $domain) {
+        $default_value[$domain['domain_id']] = $domain['domain_id'];
+      }
+    }
+    elseif (in_array('current_domain', $default_bundle_values)) {
+      $default_value[$current_domain['domain_id']] = $current_domain['domain_id'];
+    }
+    else {
+      foreach ($default_bundle_values as $did) {
+        $default_value[$did] = $did;
+      }
+    }
   } else {
     foreach($items as $delta => $item) {
       $default_value[$item['domain_id']] = $item['domain_id'];
@@ -574,12 +611,15 @@ function domain_entity_types_enable_domain_field($entity_types) {
       }
     }
     foreach ($bundles as $bundle => $widget) {
-      domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, $widget);
-      drupal_set_message(t('Domain Access behaviour \'@widget\' has been enabled on the bundle @type of @entity entity type', array('@widget' => $widget, '@type' => $bundle, '@entity' => $entity_type)));
+      domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, key($widget));
+      drupal_set_message(t('Domain Access behaviour \'@widget\' has been enabled on the bundle @type of @entity entity type', array('@widget' => key($widget), '@type' => $bundle, '@entity' => $entity_type)));
     }
     field_cache_clear();
+
+
     foreach ($entities_to_update as $key => $entity_to_update) {
       $id = key($entity_to_update);
+
       entity_save($entity_type, $entity_to_update[$id]);
     }
   }
