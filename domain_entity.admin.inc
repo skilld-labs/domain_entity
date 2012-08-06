@@ -161,11 +161,11 @@ function domain_entity_ui($form, &$form_state) {
  * Ajax form callback.
  *
  * @param array $form
- *  Form array.
+ *   Form array.
  * @param array $form_state
- *  Form state array.
+ *   Form state array.
  * @return array
- *  Form array of the elements to be updated.
+ *   Form array of the elements to be updated.
  */
 function domain_entity_ui_form_ajax_callback($form, &$form_state) {
   return $form['entities'];
@@ -176,9 +176,9 @@ function domain_entity_ui_form_ajax_callback($form, &$form_state) {
  * Submit handler for the domain entity form.
  *
  * @param array $form
- *  Form array.
+ *   Form array.
  * @param array $form_state
- *  Form state array.
+ *   Form state array.
  */
 function domain_entity_ui_submit($form, &$form_state) {
   $values = $form_state['values'];
@@ -225,7 +225,7 @@ function domain_entity_ui_submit($form, &$form_state) {
 /**
  * Return the filter administration pages entities widget.
  * @return String
- * Markup of the block.
+ *   Markup of the block.
  */
 function domain_entity_domain_switcher_get_content() {
   $links = array();
