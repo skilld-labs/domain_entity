@@ -40,7 +40,7 @@ function domain_entity_ui($form, &$form_state) {
     '#prefix' => '<div id="domain-entity-ui-form-ajax">',
     '#suffix' => '</div>',
   );
-  // Construct widget default values options
+  // Construct widget default values options:
   $site_domains = domain_domains();
   $checkboxes = array('current_domain' => t('Current domain'), 'all' => t('Send to all affiliates'));
   foreach ($site_domains as $site_domain) {
@@ -55,7 +55,7 @@ function domain_entity_ui($form, &$form_state) {
       '#type' => 'fieldset',
     );
     $form['entities'][$entity_name][$entity_name . '_value'] = array(
-      '#title' => t('Activate domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'],'@entity_name' => $entity_name)),
+      '#title' => t('Activate domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name)),
       '#type' => 'checkbox',
       '#default_value' => isset($default_values[$entity_name]),
       '#ajax' => array(
@@ -67,9 +67,9 @@ function domain_entity_ui($form, &$form_state) {
     );
     foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
       $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_behavior'] = array(
-        '#prefix'=> '<fieldset><legend><span class="fieldset-legend">' .
+        '#prefix' => '<fieldset><legend><span class="fieldset-legend">' .
                     $bundle_info['label'] . '</span></legend>',
-        '#title' => t('Choose wich behavior Domain entity must use with bundle @bundle_label (\'@bundle_name\')', array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
+        '#title' => t("Choose wich behavior Domain entity must use with bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#type' => 'select',
         '#options' => $domain_entity_options,
         '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array(key($default_values[$entity_name][$bundle_name]) => key($default_values[$entity_name][$bundle_name])) : array(DOMAIN_ENTITY_BEHAVIOR_USER => DOMAIN_ENTITY_BEHAVIOR_USER)
@@ -100,9 +100,10 @@ function domain_entity_ui($form, &$form_state) {
               $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][$site_domain['domain_id']] = 0;
               $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values'][$site_domain['domain_id']]['#disabled'] = TRUE;
             }
-            if((isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain']) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain'] === 'current_domain')) {
+            if ((isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain']) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain'] === 'current_domain')) {
               $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values']['all']['#disabled'] = TRUE;
-            } else {
+            }
+            else {
               $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain']['#disabled'] = TRUE;
             }
           }
@@ -110,13 +111,14 @@ function domain_entity_ui($form, &$form_state) {
       }
     }
     if (isset($form_state['triggering_element'])) {
-      if (empty($form_state['values']) || !isset($form_state['values'][$entity_name. '_value']) || !$form_state['values'][$entity_name. '_value']) {
+      if (empty($form_state['values']) || !isset($form_state['values'][$entity_name . '_value']) || !$form_state['values'][$entity_name . '_value']) {
         $form['entities'][$entity_name]['bundles']['#access'] = FALSE;
         $form['entities'][$entity_name]['#type'] = 'markup';
         $form['entities'][$entity_name]['#weight'] = 1000;
-      } else {
+      }
+      else {
         $form['entities'][$entity_name]['bundles']['#access'] = TRUE;
-        $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'],'@entity_name' => $entity_name));
+        $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
         $form['entities'][$entity_name]['#type'] = 'fieldset';
         // Check if content of this type exist in DB, if so prompt a warning:
         if (isset($entity_info['base table'])) {
@@ -124,15 +126,15 @@ function domain_entity_ui($form, &$form_state) {
           $query = db_select($entity_info['base table'], 'b');
           $query->addField('b', $entity_key);
           if ($query->execute()->fetchField()) {
-            $form['entities'][$entity_name][$entity_name . '_value']['#description'] =
-              '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
+            $form['entities'][$entity_name][$entity_name . '_value']['#description']
+            = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
               t('* Warning you have content of this type in your database, all unassigned content will be assigned to the choosen defaut domain value(s)') .
               '</div>';
           }
         }
       }
-      $form['entities']['#prefix'] =
-        '<div id="domain-entity-ui-form-ajax">' .
+      $form['entities']['#prefix']
+      = '<div id="domain-entity-ui-form-ajax">' .
         '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
         t('* Changes are not saved before you submit this form') .
         '</div>';
