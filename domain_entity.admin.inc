@@ -14,18 +14,20 @@
  *   Form state array
  */
 function domain_entity_ui($form, &$form_state) {
-  // get the domain_entity_allowed_entity_types values
+  // Get the domain_entity_allowed_entity_types values:
   $default_values = domain_entity_allowed_entity_types();
   $entities_info = entity_get_info();
   // Domain access take care of it:
   unset($entities_info['node']);
-  // I think this necessit an other module (login, register handling.. to be tested):
+  // I think this necessit an other module
+  // (login, register handling.. to be tested):
   unset($entities_info['user']);
-  // don't know too much about file entity.., for the moment disable it:
+  // Don't know too much about file entity.., for the moment disable it:
   unset($entities_info['file']);
-  // don't know too much about taxonomy vocabulary entity.., for the moment disable it:
+  // Don't know too much about taxonomy vocabulary entity..,
+  // for the moment disable it:
   unset($entities_info['taxonomy_vocabulary']);
-  // Set the form.
+  // Set the form:
   $form = array();
   $form['header'] = array(
     '#markup' => t('Choose wich entities are under Domain Access control, and choose domain entity widget behavior of bundles'),
@@ -38,7 +40,7 @@ function domain_entity_ui($form, &$form_state) {
     '#prefix' => '<div id="domain-entity-ui-form-ajax">',
     '#suffix' => '</div>',
   );
-  // construct widget default values options
+  // Construct widget default values options
   $site_domains = domain_domains();
   $checkboxes = array('current_domain' => t('Current domain'), 'all' => t('Send to all affiliates'));
   foreach ($site_domains as $site_domain) {
@@ -116,7 +118,7 @@ function domain_entity_ui($form, &$form_state) {
         $form['entities'][$entity_name]['bundles']['#access'] = TRUE;
         $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'],'@entity_name' => $entity_name));
         $form['entities'][$entity_name]['#type'] = 'fieldset';
-        // Check if content of this type exist in DB, if so prompt a warning
+        // Check if content of this type exist in DB, if so prompt a warning:
         if (isset($entity_info['base table'])) {
           $entity_key = $entity_info['entity keys']['id'];
           $query = db_select($entity_info['base table'], 'b');
@@ -176,9 +178,11 @@ function domain_entity_ui_submit($form, &$form_state) {
   $entities_info = entity_get_info();
   // Domain access take care of it:
   unset($entities_info['node']);
-  // I think this necessit an other module (login, register handling.. to be tested):
+  // I think this necessit an other module
+  // (login, register handling.. to be tested):
   unset($entities_info['user']);
-  // don't know too much about taxonomy vocabulary entity.., for the moment disable it:
+  // Don't know too much about taxonomy vocabulary entity..,
+  // for the moment disable it:
   unset($entities_info['file']);
   unset($entities_info['taxonomy_vocabulary']);
 
