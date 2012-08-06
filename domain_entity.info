@@ -6,4 +6,3 @@ configure = admin/structure/domain/entities
 
 dependencies[] = domain
 dependencies[] = entity
-

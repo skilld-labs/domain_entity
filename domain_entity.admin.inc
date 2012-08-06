@@ -224,6 +224,7 @@ function domain_entity_ui_submit($form, &$form_state) {
 
 /**
  * Return the filter administration pages entities widget.
+ *
  * @return String
  *   Markup of the block.
  */
