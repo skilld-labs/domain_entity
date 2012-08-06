@@ -161,11 +161,11 @@ function domain_entity_ui($form, &$form_state) {
  * Ajax form callback.
  *
  * @param array $form
- * Form array.
+ *  Form array.
  * @param array $form_state
- * Form state array.
+ *  Form state array.
  * @return array
- * Form array of the elements to be updated.
+ *  Form array of the elements to be updated.
  */
 function domain_entity_ui_form_ajax_callback($form, &$form_state) {
   return $form['entities'];
@@ -176,9 +176,9 @@ function domain_entity_ui_form_ajax_callback($form, &$form_state) {
  * Submit handler for the domain entity form.
  *
  * @param array $form
- * Form array.
+ *  Form array.
  * @param array $form_state
- * Form state array.
+ *  Form state array.
  */
 function domain_entity_ui_submit($form, &$form_state) {
   $values = $form_state['values'];
@@ -197,7 +197,7 @@ function domain_entity_ui_submit($form, &$form_state) {
   $domain_entity_allowed_entity_types = array();
   foreach ($entities_info as $entity_name => $entity_info) {
     if ($values[$entity_name . '_value']) {
-      $domain_entity_allowed_entity_types [$entity_name] = array();
+      $domain_entity_allowed_entity_types[$entity_name] = array();
       foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
         $default_values = array();
         foreach ($values[$entity_name . '_' . $bundle_name . '_default_values'] as $key => $value) {
@@ -225,6 +225,7 @@ function domain_entity_ui_submit($form, &$form_state) {
 /**
  * Return the filter administration pages entities widget.
  * @return String
+ * Markup of the block.
  */
 function domain_entity_domain_switcher_get_content() {
   $links = array();
@@ -242,7 +243,7 @@ function domain_entity_domain_switcher_get_content() {
     }
   }
   return theme_item_list(array(
-    'items' =>$links,
+    'items' => $links,
     'attributes' => array(),
     'title' => '',
     'type' => 'ul',
