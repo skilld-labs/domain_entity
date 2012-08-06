@@ -162,8 +162,10 @@ function domain_entity_ui($form, &$form_state) {
  *
  * @param array $form
  *   Form array.
+ *
  * @param array $form_state
  *   Form state array.
+ *
  * @return array
  *   Form array of the elements to be updated.
  */
@@ -177,6 +179,7 @@ function domain_entity_ui_form_ajax_callback($form, &$form_state) {
  *
  * @param array $form
  *   Form array.
+ *
  * @param array $form_state
  *   Form state array.
  */
