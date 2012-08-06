@@ -67,8 +67,7 @@ function domain_entity_ui($form, &$form_state) {
     );
     foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
       $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_behavior'] = array(
-        '#prefix' => '<fieldset><legend><span class="fieldset-legend">' .
-                    $bundle_info['label'] . '</span></legend>',
+        '#prefix' => '<fieldset><legend><span class="fieldset-legend">' . $bundle_info['label'] . '</span></legend>',
         '#title' => t("Choose wich behavior Domain entity must use with bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#type' => 'select',
         '#options' => $domain_entity_options,
@@ -146,20 +145,24 @@ function domain_entity_ui($form, &$form_state) {
     }
     else {
       $form['entities'][$entity_name]['bundles']['#access'] = TRUE;
-      $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'],'@entity_name' => $entity_name));
+      $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
       $form['entities'][$entity_name]['#type'] = 'fieldset';
     }
 
   }
   $form['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save'),
+    '#type' => 'submit',
+    '#value' => t('Save'),
   );
   return $form;
 }
 
 /**
- * Ajax form callback,
+ *
+ * Ajax form callback.
+ * @param array $form Form array
+ * @param array $form_state Form state array
+ * @return array
  */
 function domain_entity_ui_form_ajax_callback($form, &$form_state) {
   return $form['entities'];
@@ -167,14 +170,9 @@ function domain_entity_ui_form_ajax_callback($form, &$form_state) {
 }
 
 /**
- * Validate handler for the domain overview form.
- *
-function domain_entity_ui_validate($form, &$form_state) {
-
-}//*/
-
-/**
  * Submit handler for the domain entity form.
+ * @param array $form Form array
+ * @param array $form_state Form state array
  */
 function domain_entity_ui_submit($form, &$form_state) {
   $values = $form_state['values'];
@@ -219,7 +217,8 @@ function domain_entity_ui_submit($form, &$form_state) {
 }
 
 /**
- * Return the filter administration pages entities widget
+ * Return the filter administration pages entities widget.
+ * @return String
  */
 function domain_entity_domain_switcher_get_content() {
   $links = array();
@@ -240,6 +239,6 @@ function domain_entity_domain_switcher_get_content() {
     'items' =>$links,
     'attributes' => array(),
     'title' => '',
-    'type' => 'ul'
+    'type' => 'ul',
   ));
 }
