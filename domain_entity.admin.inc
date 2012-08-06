@@ -1,9 +1,9 @@
 <?php
 
 /**
-* @file
-* Domain Access Entity admininistration settings / form
-*/
+ * @file
+ * Domain Access Entity admininistration settings / form
+ */
 
 /**
  * Domain Access Entity settings form.
