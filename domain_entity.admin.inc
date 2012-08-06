@@ -72,13 +72,13 @@ function domain_entity_ui($form, &$form_state) {
         '#title' => t("Choose wich behavior Domain entity must use with bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#type' => 'select',
         '#options' => $domain_entity_options,
-        '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array(key($default_values[$entity_name][$bundle_name]) => key($default_values[$entity_name][$bundle_name])) : array(DOMAIN_ENTITY_BEHAVIOR_USER => DOMAIN_ENTITY_BEHAVIOR_USER)
+        '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array(key($default_values[$entity_name][$bundle_name]) => key($default_values[$entity_name][$bundle_name])) : array(DOMAIN_ENTITY_BEHAVIOR_USER => DOMAIN_ENTITY_BEHAVIOR_USER),
       );
       // Add a checkboxes for domain id's:
       $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values'] = array(
         '#type' => 'checkboxes',
         '#options' => $checkboxes,
-        '#title' => t('default domain value(s) for the bundle: @bundle_label (\'@bundle_name\')', array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
+        '#title' => t("default domain value(s) for the bundle: @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? reset($default_values[$entity_name][$bundle_name]) : array('current_domain' => 'current_domain'),
         '#required' => TRUE,
         '#suffix' => '</fieldset>',
@@ -127,22 +127,24 @@ function domain_entity_ui($form, &$form_state) {
           $query->addField('b', $entity_key);
           if ($query->execute()->fetchField()) {
             $form['entities'][$entity_name][$entity_name . '_value']['#description']
-            = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
+              = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
               t('* Warning you have content of this type in your database, all unassigned content will be assigned to the choosen defaut domain value(s)') .
               '</div>';
           }
         }
       }
       $form['entities']['#prefix']
-      = '<div id="domain-entity-ui-form-ajax">' .
+        = '<div id="domain-entity-ui-form-ajax">' .
         '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
         t('* Changes are not saved before you submit this form') .
         '</div>';
-    } elseif(!isset($default_values[$entity_name])) {
+    }
+    elseif (!isset($default_values[$entity_name])) {
       $form['entities'][$entity_name]['bundles']['#access'] = FALSE;
       $form['entities'][$entity_name]['#type'] = 'markup';
       $form['entities'][$entity_name]['#weight'] = 1000;
-    } else {
+    }
+    else {
       $form['entities'][$entity_name]['bundles']['#access'] = TRUE;
       $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'],'@entity_name' => $entity_name));
       $form['entities'][$entity_name]['#type'] = 'fieldset';
@@ -198,11 +200,11 @@ function domain_entity_ui_submit($form, &$form_state) {
           if ($key == $value && $key !== 'current_domain' && $key !== 'all') {
             $default_values[$key] = $value;
           }
-          if($key === 'current_domain' && $value === 'current_domain') {
+          if ($key === 'current_domain' && $value === 'current_domain') {
             $default_values = array($key => $value);
             break;
           }
-          if($key === 'all' && $value === 'all') {
+          if ($key === 'all' && $value === 'all') {
             $default_values = array($key => $value);
             break;
           }
@@ -226,9 +228,10 @@ function domain_entity_domain_switcher_get_content() {
   $user_granted_domain_ids = domain_get_user_domains($user);
   foreach ($domains as $domain) {
     if (in_array($domain['domain_id'], $user_granted_domain_ids)) {
-      if(isset($_GET['domain']) && $domain['domain_id'] == $_GET['domain']) {
+      if (isset($_GET['domain']) && $domain['domain_id'] == $_GET['domain']) {
         $links[] = '<strong>' . t('This page are listing only entites affiliated from the site: @sitename', array('@sitename' => $domain['sitename'])) . '</strong>';
-      } else {
+      }
+      else {
         $links[] = l(t('See only entity affiliated from the site @sitename on this page', array('@sitename' => $domain['sitename'])), current_path(), array('query' => array('domain' => $domain['domain_id'])));
       }
     }
