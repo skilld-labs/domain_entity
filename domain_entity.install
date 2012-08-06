@@ -1,8 +1,8 @@
 <?php
 /**
-* @file
-* Domain Access Entity install function
-*/
+ * @file
+ * Domain Access Entity install function
+ */
 
 /**
  * Implements hook_field_schema().
