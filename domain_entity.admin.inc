@@ -1,9 +1,17 @@
 <?php
 
 /**
- * Domain Access Entity settings form
- * @param $form
- * @param $form_state
+* @file
+* Domain Access Entity admininistration settings / form
+*/
+
+/**
+ * Domain Access Entity settings form.
+ *
+ * @param array $form
+ *   Form array
+ * @param array $form_state
+ *   Form state array
  */
 function domain_entity_ui($form, &$form_state) {
   // get the domain_entity_allowed_entity_types values
