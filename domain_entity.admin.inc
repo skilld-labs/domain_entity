@@ -22,8 +22,6 @@ function domain_entity_ui($form, &$form_state) {
   // I think this necessit an other module
   // (login, register handling.. to be tested):
   unset($entities_info['user']);
-  // Don't know too much about file entity.., for the moment disable it:
-  unset($entities_info['file']);
   // Don't know too much about taxonomy vocabulary entity..,
   // for the moment disable it:
   unset($entities_info['taxonomy_vocabulary']);
