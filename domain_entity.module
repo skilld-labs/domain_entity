@@ -421,7 +421,7 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     $user_granted_domain_ids = domain_get_user_domains($user);
     $is_editable = TRUE;
     foreach ($site_domains as $domain) {
-      if(!in_array($domain['domain_id'], $user_granted_domain_ids)) {
+      if(!in_array($domain['domain_id'], $user_granted_domain_ids) && $user->uid != 1) {
         $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
         $is_editable = FALSE;
       } else {
