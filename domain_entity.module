@@ -552,7 +552,7 @@ function domain_entity_create_field_instance($field_name, $field_type, $required
 /**
  * Helper function to active domain field on bundles of entity types.
  *
- * @param Array $entity_types
+ * @param array $entity_types
  *   List of Entity types, that list her bundles.
  */
 function domain_entity_types_enable_domain_field($entity_types) {
@@ -616,9 +616,9 @@ function domain_entity_types_enable_domain_field($entity_types) {
   foreach ($entities_to_update as $entity_type => $entities) {
     foreach ($entities as $entity_id) {
       $operations[] = array('_domain_entity_update_entity_defaut_value', array(
-        $entity_type,
-        $entity_id
-      ));
+          $entity_type,
+          $entity_id,
+        ));
     }
   }
   $batch = array(
