@@ -530,7 +530,7 @@ function domain_entity_create_field_instance($field_name, $field_type, $required
 
     $entity_info = entity_get_info($entity_type);
 
-    // add default view mode and teaser so display is set.
+    // Add default view mode and teaser so display is set.
     $entity_info['view modes'] += array(
       'default' => array(),
       'node_teaser' => array(),
@@ -550,9 +550,10 @@ function domain_entity_create_field_instance($field_name, $field_type, $required
 }
 
 /**
- * Helper function to active the domain field on all bundle of a list of entity type.
+ * Helper function to active domain field on bundles of entity types.
  *
- * @param array $entity_types
+ * @param Array $entity_types
+ *   List of Entity types, that list her bundles.
  */
 function domain_entity_types_enable_domain_field($entity_types) {
   // Common settings.
@@ -597,7 +598,7 @@ function domain_entity_types_enable_domain_field($entity_types) {
         drupal_set_message(t("Domain Access behaviour '@widget' has been enabled on the bundle @type of @entity entity type", array(
           '@widget' => key($widget),
           '@type' => $bundle,
-          '@entity' => $entity_type
+          '@entity' => $entity_type,
         )));
       }
     }
@@ -614,7 +615,10 @@ function domain_entity_types_enable_domain_field($entity_types) {
   $operations = array();
   foreach ($entities_to_update as $entity_type => $entities) {
     foreach ($entities as $entity_id) {
-      $operations[] = array('_domain_entity_update_entity_defaut_value', array($entity_type, $entity_id));
+      $operations[] = array('_domain_entity_update_entity_defaut_value', array(
+        $entity_type,
+        $entity_id
+      ));
     }
   }
   $batch = array(
