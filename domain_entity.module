@@ -138,9 +138,6 @@ function domain_entity_query_alter($query) {
 }
 /**
  * Implements hook_entity_presave().
- *
- * @param Entity $entity
- * @param $type
  */
 function domain_entity_entity_presave($entity, $type) {
   // Check if it's an allowed entity types:
@@ -149,9 +146,10 @@ function domain_entity_entity_presave($entity, $type) {
     return;
   }
   // Get domain_entity field type instances:
-  if($field_instance = domain_entity_entity_field_instance($type)) {
+  if ($field_instance = domain_entity_entity_field_instance($type)) {
     $field_instance_name = $field_instance['name'];
-  } else {
+  }
+  else {
     return FALSE;
   }
 
@@ -198,7 +196,8 @@ function domain_entity_entity_presave($entity, $type) {
     $entity->$field_instance_name = array(
       LANGUAGE_NONE => $values
     );
-  } else {
+  }
+  else {
     // Populate field instance with the default bundle domain value,
     // if is not already set or unassigned.
     $value = $entity->$field_instance_name;
@@ -255,7 +254,8 @@ function domain_entity_entity_field_instance($entity_type) {
         'name' => $field_instance[0]->field_name,
         'settings' => unserialize($field_instance[0]->data),
       );
-    } else {
+    }
+    else {
       return FALSE;
     }
 
@@ -370,7 +370,7 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
       }
     }
   } else {
-    foreach($items as $delta => $item) {
+    foreach ($items as $delta => $item) {
       $default_value[$item['domain_id']] = $item['domain_id'];
     }
   }
@@ -393,14 +393,15 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     $is_editable = TRUE;
     foreach ($site_domains as $domain) {
       // We let the super user override this restriction.
-      if(!in_array($domain['domain_id'], $user_granted_domain_ids) && $user->uid != 1) {
+      if (!in_array($domain['domain_id'], $user_granted_domain_ids) && $user->uid != 1) {
         $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
         $is_editable = FALSE;
-      } else {
+      }
+      else {
         $is_editable = TRUE;
       }
     }
-    if(!$is_editable) {
+    if (!$is_editable) {
       $element['domain_id']['#disabled'] = TRUE;
     }
   }
@@ -422,7 +423,7 @@ function domain_entity_widget_multiple_values_form_validate($element, &$form_sta
   $values = $element['#value'];
   $active_domain = array();
   foreach ($values as $domain_id => $active) {
-    if($active) {
+    if ($active) {
       $active_domain[] = array('domain_id' => $domain_id);
     }
   }
@@ -598,14 +599,15 @@ function domain_entity_types_enable_domain_field($entity_types) {
   // Clear cache as we are going to update existing entities field values.
   field_cache_clear();
 
-  // Bypass access restriction to allow the current user to access the entity that are not already assigned.
+  // Bypass access restriction to allow the current user,
+  // to access the entity that are not already assigned.
   $domain_entity_allowed_entity_types_backup = variable_get('domain_entity_allowed_entity_types', array());
   variable_set('domain_entity_allowed_entity_types_backup', $domain_entity_allowed_entity_types_backup);
   variable_set('domain_entity_allowed_entity_types', array());
 
   $operations = array();
   foreach ($entities_to_update as $entity_type => $entities) {
-    foreach($entities as $entity_id) {
+    foreach ($entities as $entity_id) {
       $operations[] = array('_domain_entity_update_entity_defaut_value', array($entity_type, $entity_id));
     }
   }
