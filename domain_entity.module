@@ -97,7 +97,7 @@ function domain_entity_allowed_entity_types_base_tables() {
  * Alter the enabled entities select query,
  * add domain access conditions.
  */
-function domain_entity_query_alter($query) {
+function domain_entity_query_alter(&$query) {
   if (method_exists($query, 'getTables')) {
     $tables = $query->getTables();
     $base_table_alias = key($tables);
