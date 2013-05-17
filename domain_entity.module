@@ -42,7 +42,9 @@ function domain_entity_menu() {
 
 
 /**
- * Implements hook_permission(). Define domain entity permissions.
+ * Implements hook_permission().
+ *
+ * Define domain entity permissions.
  */
 function domain_entity_permission() {
   return array(
