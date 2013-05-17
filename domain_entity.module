@@ -199,7 +199,7 @@ function domain_entity_entity_presave($entity, $type) {
     // Populate field instance with the default bundle domain value,
     // if is not already set or unassigned.
     $entity->$field_instance_name = array(
-      LANGUAGE_NONE => $values
+      LANGUAGE_NONE => $values,
     );
   }
   else {
@@ -208,7 +208,7 @@ function domain_entity_entity_presave($entity, $type) {
     $value = $entity->$field_instance_name;
     if (empty($value) || !isset($value[LANGUAGE_NONE][0]) || !$value[LANGUAGE_NONE][0]['domain_id']) {
       $entity->$field_instance_name = array(
-        LANGUAGE_NONE => $values
+        LANGUAGE_NONE => $values,
       );
     }
   }
@@ -217,7 +217,7 @@ function domain_entity_entity_presave($entity, $type) {
 
 /**
  * Get the list of domain_entity field type instances.
- * @return array $domain_entity_field_instances
+ * @return array
  *   Array of key(field_id) => field_instance_name.
  */
 function domain_entity_field_instances() {
@@ -238,7 +238,8 @@ function domain_entity_field_instances() {
 
 /**
  * Get the list of domain_entity field type instances.
- * @return String the name of the bundle field instance
+ * @return String
+ *   The name of the bundle field instance.
  */
 function domain_entity_entity_field_instance($entity_type) {
   // First check the static cache for a domain_entity field instances array.
@@ -253,9 +254,9 @@ function domain_entity_entity_field_instance($entity_type) {
     $query = db_select('field_config_instance', 'fci');
     $query->condition('fci.entity_type', $entity_type, '=');
     $query->condition('fci.field_name', $domain_entity_field_instances, 'IN');
-    $query->fields('fci', array('field_name','data'));
+    $query->fields('fci', array('field_name', 'data'));
     $field_instance = $query->execute()->fetchAll();
-    if(isset($field_instance[0])) {
+    if (isset($field_instance[0])) {
       $domain_entity_entity_field_instance[$entity_type] = array(
         'name' => $field_instance[0]->field_name,
         'settings' => unserialize($field_instance[0]->data),
@@ -264,15 +265,15 @@ function domain_entity_entity_field_instance($entity_type) {
     else {
       return FALSE;
     }
-
-
   }
 
   return $domain_entity_entity_field_instance[$entity_type];
 }
 
 /**
- * Implements hook_entity_info_alter(). Make sure entities used by domain_entity are fieldable.
+ * Implements hook_entity_info_alter().
+ *
+ * Make sure entities used by domain_entity are fieldable.
  */
 function domain_entity_entity_info_alter(&$entity_info) {
   $entities = domain_entity_allowed_entity_types();
@@ -288,7 +289,7 @@ function domain_entity_field_info() {
   return array(
     'domain_entity' => array(
       'label' => t('Domain'),
-      'description' => t('This field stores the domain ID\'s.'),
+      'description' => t("This field stores the domain ID's."),
       'settings' => array(),
       'instance_settings' => array(),
       'default_widget' => DOMAIN_ENTITY_BEHAVIOR_AUTO,
@@ -343,8 +344,8 @@ function domain_entity_field_widget_error($element, $error, $form, &$form_state)
 }
 
 /**
-* Implements hook_field_widget_form().
-*/
+ * Implements hook_field_widget_form().
+ */
 function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
   $widget = $instance['widget'];
   $current_domain = domain_get_domain();
@@ -356,7 +357,7 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
   }
 
-  // set the domain default value if no value has been set :
+  // Set the domain default value if no value has been set :
   $default_value = array();
   if (!isset($items[0]) || empty($items[0]) || !isset($items[0]['domain_id'])) {
     // Get default bundle value,
@@ -375,7 +376,8 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
         $default_value[$did] = $did;
       }
     }
-  } else {
+  }
+  else {
     foreach ($items as $delta => $item) {
       $default_value[$item['domain_id']] = $item['domain_id'];
     }
@@ -418,8 +420,9 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
 }
 
 /**
- * Widget form validate,
- * handle checkboxes to save it as multiple field values (delta).
+ * Widget form validate.
+ *
+ * Handle checkboxes to save it as multiple field values (delta).
  */
 function domain_entity_widget_multiple_values_form_validate($element, &$form_state, $form) {
   $entity_type = isset($element['#entity_type']) ? $element['#entity_type'] : FALSE;
@@ -458,7 +461,7 @@ function domain_entity_form_field_ui_field_edit_form_alter(&$form, &$form_state,
 /**
  * Callback to alter the property info of domain fields.
  *
- * @see domain_entity_field_info().
+ * @see domain_entity_field_info()
  */
 function domain_entity_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
   $name = $field['field_name'];
@@ -490,14 +493,6 @@ function domain_entity_field_data_property_info($name = NULL) {
 
 /**
  * Create a field instance.
- * @param $field_name
- * @param $field_type
- * @param $required
- * @param $entity_type
- * @param $bundle
- * @param $label
- * @param $description
- * @param $weight
  */
 function domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, $widget, $description = NULL, $weight = 0, $display = array()) {
   // Look for or add the specified field to the requested entity bundle.
@@ -528,14 +523,14 @@ function domain_entity_create_field_instance($field_name, $field_type, $required
       'description' => $description,
       'default_value' => array(array('value' => 0)),
       'widget' => array(
-        'type' => $widget
+        'type' => $widget,
       ),
       'display' => array(),
     );
 
     $entity_info = entity_get_info($entity_type);
 
-    // Spoof the default view mode and node teaser so its display type is set.
+    // add default view mode and teaser so display is set.
     $entity_info['view modes'] += array(
       'default' => array(),
       'node_teaser' => array(),
@@ -556,7 +551,8 @@ function domain_entity_create_field_instance($field_name, $field_type, $required
 
 /**
  * Helper function to active the domain field on all bundle of a list of entity type.
- * @param $entity_types
+ *
+ * @param array $entity_types
  */
 function domain_entity_types_enable_domain_field($entity_types) {
   // Common settings.
@@ -568,7 +564,7 @@ function domain_entity_types_enable_domain_field($entity_types) {
   // Create fields instance.
   foreach ($entity_types as $entity_type => $bundles) {
     $field_name = 'domain_' . $entity_type;
-    if (strlen($field_name)> 21) {
+    if (strlen($field_name) > 21) {
       $field_name = substr('domain_' . md5($field_name), 0, -7);
     }
     $entity_info = entity_get_info($entity_type);
@@ -598,7 +594,11 @@ function domain_entity_types_enable_domain_field($entity_types) {
       $instance = field_info_instance($entity_type, $field_name, $bundle);
       if (empty($instance)) {
         domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, key($widget));
-        drupal_set_message(t('Domain Access behaviour \'@widget\' has been enabled on the bundle @type of @entity entity type', array('@widget' => key($widget), '@type' => $bundle, '@entity' => $entity_type)));
+        drupal_set_message(t("Domain Access behaviour '@widget' has been enabled on the bundle @type of @entity entity type", array(
+          '@widget' => key($widget),
+          '@type' => $bundle,
+          '@entity' => $entity_type
+        )));
       }
     }
   }
