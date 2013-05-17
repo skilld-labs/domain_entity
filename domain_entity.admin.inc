@@ -150,7 +150,7 @@ function domain_entity_ui($form, &$form_state) {
   }
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Save'),
+    '#value' => t('Save & Assign existing entities to the default domain'),
   );
   return $form;
 }
@@ -221,33 +221,4 @@ function domain_entity_ui_submit($form, &$form_state) {
   variable_set('domain_entity_allowed_entity_types', $domain_entity_allowed_entity_types);
   drupal_set_message(t('Domain settings updated'));
   domain_entity_types_enable_domain_field($domain_entity_allowed_entity_types);
-}
-
-/**
- * Return the filter administration pages entities widget.
- *
- * @return String
- *   Markup of the block.
- */
-function domain_entity_domain_switcher_get_content() {
-  $links = array();
-  $domains = domain_domains();
-  global $user;
-  $user_granted_domain_ids = domain_get_user_domains($user);
-  foreach ($domains as $domain) {
-    if (in_array($domain['domain_id'], $user_granted_domain_ids)) {
-      if (isset($_GET['domain']) && $domain['domain_id'] == $_GET['domain']) {
-        $links[] = '<strong>' . t('This page are listing only entites affiliated from the site: @sitename', array('@sitename' => $domain['sitename'])) . '</strong>';
-      }
-      else {
-        $links[] = l(t('See only entity affiliated from the site @sitename on this page', array('@sitename' => $domain['sitename'])), current_path(), array('query' => array('domain' => $domain['domain_id'])));
-      }
-    }
-  }
-  return theme_item_list(array(
-    'items' => $links,
-    'attributes' => array(),
-    'title' => '',
-    'type' => 'ul',
-  ));
 }
