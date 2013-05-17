@@ -159,10 +159,13 @@ function domain_entity_entity_presave($entity, $type) {
   // Get default bundle value
   // e.g (all, current_domain, list(domain_id))
   $bundle_key = $entity_info['entity keys']['bundle'];
-  $default_values = reset($allowed_entity_types[$type][$entity->$bundle_key]);
-  $default_values = isset($allowed_entity_types[$type][$entity->$bundle_key])
-                    ? reset($allowed_entity_types[$type][$entity->$bundle_key])
-                    : array();
+
+  if (isset($allowed_entity_types[$type][$entity->$bundle_key])) {
+    $default_values = reset($allowed_entity_types[$type][$entity->$bundle_key]);
+  }
+  else {
+    $default_values = array();
+  }
   if (in_array('all', $default_values)) {
     $values = array();
     $domains = domain_domains();
