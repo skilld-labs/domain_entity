@@ -21,7 +21,7 @@ define('DOMAIN_ENTITY_BEHAVIOR_AUTO', 'domain_entity_auto_hidden');
 define('DOMAIN_ENTITY_BEHAVIOR_USER', 'domain_entity_user_multiple_choice');
 
 /**
- * Implements hook_menu
+ * Implements hook_menu().
  */
 function domain_entity_menu() {
   $items = array();
@@ -34,7 +34,7 @@ function domain_entity_menu() {
     'page callback' => 'drupal_get_form',
     'file' => 'domain_entity.admin.inc',
     'description' => 'Enable or Disable domain on entities / Configure domain entities behavior.',
-    'weight' => -5
+    'weight' => -5,
   );
 
   return $items;
@@ -42,28 +42,29 @@ function domain_entity_menu() {
 
 
 /**
- * Implements hook_permission
- * Define domain entity permissions
+ * Implements hook_permission().
+ * Define domain entity permissions.
  */
 function domain_entity_permission() {
   return array(
     'access entities affiliate on assigned domains' => array(
-      'title' => t('access and filter entities affiliate on user\'s assigned domains'),
+      'title' => t("access and filter entities affiliate on user's assigned domains"),
       'description' => t('Allow an editor of multiple domains to access entities on different domain.'),
-      'restrict access' => TRUE
+      'restrict access' => TRUE,
     ),
     'set domain access status for all entities' => array(
       'title' => t('Set domain access status for all entities'),
       'description' => t('Allow editor to edit & set domain access for all entities type.'),
-      'restrict access' => TRUE
+      'restrict access' => TRUE,
     ),
   );
 }
 
 /**
- * Return the list of the domain_entity fieldable entity types
+ * Return the list of the domain_entity fieldable entity types.
  *
- * @return array list of entity types
+ * @return array
+ *  list of entity types
  */
 function domain_entity_allowed_entity_types() {
   return variable_get('domain_entity_allowed_entity_types', array());

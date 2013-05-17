@@ -45,7 +45,6 @@ function domain_entity_ui($form, &$form_state) {
     $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
   }
 
-
   // Now build the form elements.
   foreach ($entities_info as $entity_name => $entity_info) {
     $form['entities'][$entity_name] = array(
