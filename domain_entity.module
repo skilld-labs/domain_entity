@@ -120,9 +120,9 @@ function domain_entity_query_alter($query) {
     // Middle office editors with permission see in administration,
     // entity from her lists of assigned domains.
     if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
-      $accessible_domain_ids = domain_get_user_domains($user);
+      $user_domain = domain_get_user_domains($user);
+      $accessible_domain_ids = !empty($user_domain) ? $user_domain : $accessible_domain_ids;
     }
-
     // Get the entity_type for this base_table:
     $entity_type = $domain_entity_bases_table[$base_table];
     // Get entity_type and field info:
