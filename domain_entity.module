@@ -117,8 +117,8 @@ function domain_entity_query_alter($query) {
     global $user;
     $current_domain = domain_get_domain();
     $accessible_domain_ids = array($current_domain['domain_id']);
-    // Middle office editors with permission see in administration entity from her lists of assigned domains
-    // allowing editors to filtering administration page by domain id
+    // Middle office editors with permission see in administration,
+    // entity from her lists of assigned domains.
     if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
       $accessible_domain_ids = domain_get_user_domains($user);
     }
