@@ -191,8 +191,10 @@ function domain_entity_entity_presave($entity, $type) {
     }
   }
   // Ensure this entities have almost a default value.
-  // Attach it to current domain if the entity is created by bypassing entity creation form,
-  // do not let an unset domain entity saved (or the entity became inaccessible everywhere).
+  // Attach it to current domain if the entity is created,
+  // by bypassing entity creation form,
+  // do not let an unset domain entity saved,
+  // (or the entity became inaccessible everywhere).
   if (!isset($entity->$field_instance_name)) {
     // Populate field instance with the default bundle domain value,
     // if is not already set or unassigned.
@@ -215,7 +217,8 @@ function domain_entity_entity_presave($entity, $type) {
 
 /**
  * Get the list of domain_entity field type instances.
- * @return Array of key(field_id) => field_instance_name
+ * @return array $domain_entity_field_instances
+ *   Array of key(field_id) => field_instance_name.
  */
 function domain_entity_field_instances() {
   // First check the static cache for a domain_entity field instances array.
