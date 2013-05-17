@@ -136,6 +136,7 @@ function domain_entity_query_alter(&$query) {
     $query->condition('dom.' . $field_instance_name . '_domain_id', $accessible_domain_ids, 'IN');
   }
 }
+
 /**
  * Implements hook_entity_presave().
  */
