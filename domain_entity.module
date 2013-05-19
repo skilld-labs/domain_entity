@@ -122,9 +122,12 @@ function domain_entity_query_alter(&$query) {
     $field_instance = domain_entity_entity_field_instance($entity_type);
     $field_instance_name = $field_instance['name'];
 
-    // Add our access condition:
-    $query->leftJoin('field_data_' . $field_instance_name, 'dom', $base_table_alias . '.' . $entity_key . ' = %alias.entity_id');
-    $query->condition('dom.' . $field_instance_name . '_domain_id', $accessible_domain_ids, 'IN');
+    // Add our subquery condition:
+    $domain_query = db_select('field_data_' . $field_instance_name, 'dom');
+    $domain_query->where('dom.entity_id = ' . $base_table_alias . '.' . $entity_key);
+    $domain_query->condition('dom.' . $field_instance_name . '_domain_id', $accessible_domain_ids, 'IN');
+    $domain_query->fields('dom', array($field_instance_name . '_domain_id'));
+    $query->exists($domain_query);
   }
 }
 
