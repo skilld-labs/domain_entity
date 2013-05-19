@@ -2,19 +2,24 @@
 
 /**
  * @file
- * Interface between domain_views.module and views.module.
+ * Interface between domain_entity.module, domain_views.module and views.module.
  *
- * @ingroup domain_views
+ * @ingroup domain_entity
  */
 
 /**
- * Filter for domain ids stored in the database, currently active domain and any domain
+ * Filter for domain ids stored in the database.
+ *
+ * Access to the domain's list are restricted,
+ * depending on the user permissions and assigned domain.
  */
 class domain_entity_views_handler_filter_domain_domain_id extends views_handler_filter_in_operator  {
 
+  /**
+   * @see views_handler_filter_in_operator::option_definition()
+   */
   function option_definition() {
     $options = parent::option_definition();
-
     $current_domain = domain_get_domain();
     $accessible_domain_ids = domain_entity_get_user_available_domains();
     if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
@@ -23,11 +28,12 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
     else {
       $options['value']['default'] = array(reset($accessible_domain_ids));
     }
-
-
     return $options;
   }
 
+  /**
+   * @see views_handler_filter_in_operator::get_value_options()
+   */
   function get_value_options() {
     if (!isset($this->value_options)) {
       $current_domain = domain_get_domain();
