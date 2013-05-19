@@ -16,6 +16,7 @@
 class domain_entity_views_handler_filter_domain_domain_id extends views_handler_filter_in_operator  {
 
   /**
+   * Override views_handler_filter_in_operator::get_value_options().
    * @see views_handler_filter_in_operator::option_definition()
    */
   function option_definition() {
@@ -32,6 +33,7 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
   }
 
   /**
+   * Override views_handler_filter_in_operator::get_value_options().
    * @see views_handler_filter_in_operator::get_value_options()
    */
   function get_value_options() {
