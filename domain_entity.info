@@ -6,3 +6,5 @@ configure = admin/structure/domain/entities
 
 dependencies[] = domain
 dependencies[] = entity
+
+files[] = includes/domain_entity_views_handler_filter_domain_domain_id.inc

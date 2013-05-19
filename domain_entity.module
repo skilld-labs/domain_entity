@@ -77,14 +77,16 @@ function domain_entity_allowed_entity_types() {
 function domain_entity_allowed_entity_types_base_tables() {
   // First check the static cache for a domain_entity field instances array.
   $domain_entity_allowed_entity_types_base_tables = &drupal_static(__FUNCTION__);
-
   // If it did not exist, fetch the types now.
   if (!isset($domain_entity_allowed_entity_types_base_tables)) {
     $domain_entity_allowed_entity_types_base_tables = array();
     $domain_entity_allowed_entity_types = domain_entity_allowed_entity_types();
-    foreach ($domain_entity_allowed_entity_types as $entity_name => $bundles) {
-      $entity_info = entity_get_info($entity_name);
-      $domain_entity_allowed_entity_types_base_tables[$entity_info['base table']] = $entity_name;
+    foreach ($domain_entity_allowed_entity_types as $entity_type => $bundles) {
+      $entity_info = entity_get_info($entity_type);
+      $domain_entity_allowed_entity_types_base_tables[$entity_info['base table']] = array(
+          'entity key' => $entity_info['entity keys']['id'],
+          'entity type' => $entity_type,
+        );
     }
   }
 
@@ -111,23 +113,12 @@ function domain_entity_query_alter(&$query) {
 
     // This is an enabled domain entity,
     // prepare our custom access conditions.
-    // Get the current user list of granted domain id:
-    // the current domain id OR for middle-office editors:
-    // the list of assigned domain(s) id.
-    global $user;
-    $current_domain = domain_get_domain();
-    $accessible_domain_ids = array($current_domain['domain_id']);
-    // Middle office editors with permission see in administration,
-    // entity from her lists of assigned domains.
-    if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
-      $user_domain = domain_get_user_domains($user);
-      $accessible_domain_ids = !empty($user_domain) ? $user_domain : $accessible_domain_ids;
-    }
-    // Get the entity_type for this base_table:
-    $entity_type = $domain_entity_bases_table[$base_table];
-    // Get entity_type and field info:
-    $entity_info = entity_get_info($entity_type);
-    $entity_key = $entity_info['entity keys']['id'];
+    // Get the accessible domain id's by the current user, in the current path.
+    $accessible_domain_ids = domain_entity_get_user_available_domains();
+    // Get the entity_type and key for this base_table:
+    $entity_type = $domain_entity_bases_table[$base_table]['entity type'];
+    $entity_key = $domain_entity_bases_table[$base_table]['entity key'];
+    // Get the field name for this entity:
     $field_instance = domain_entity_entity_field_instance($entity_type);
     $field_instance_name = $field_instance['name'];
 
@@ -135,6 +126,33 @@ function domain_entity_query_alter(&$query) {
     $query->leftJoin('field_data_' . $field_instance_name, 'dom', $base_table_alias . '.' . $entity_key . ' = %alias.entity_id');
     $query->condition('dom.' . $field_instance_name . '_domain_id', $accessible_domain_ids, 'IN');
   }
+}
+
+/**
+ * Return a list of domain id's, accessible by the current user.
+ * .
+ * @param $user
+ *   Drupal user account.
+ *
+ * @return array
+ *   List of domain id's.
+ */
+function domain_entity_get_user_available_domains($user = NULL) {
+  if (!is_object($user)) {
+    global $user;
+  }
+  // Get the current user list of granted domain id:
+  // the current domain id OR for middle-office editors:
+  // the list of assigned domain(s) id.
+  $current_domain = domain_get_domain();
+  $accessible_domain_ids = array($current_domain['domain_id']);
+  // Middle office editors with permission see in administration,
+  // entity from her lists of assigned domains.
+  if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
+    $user_domain = domain_get_user_domains($user);
+    $accessible_domain_ids = !empty($user_domain) ? $user_domain : $accessible_domain_ids;
+  }
+  return $accessible_domain_ids;
 }
 
 /**
@@ -214,6 +232,41 @@ function domain_entity_entity_presave($entity, $type) {
     }
   }
   return $entity;
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function domain_entity_views_api() {
+  list($module, $api) = func_get_args();
+  if ($module == "views" && $api == "views_default") {
+    return array("version" => 3.0);
+  }
+}
+
+/**
+ * Implementation of hook_views_data().
+ */
+function domain_entity_views_data_alter(&$data) {
+  if (module_exists('domain_views')) {
+    $entity_base_tables = domain_entity_allowed_entity_types_base_tables();
+    if (empty($entity_base_tables)) {
+      return;
+    }
+    foreach ($entity_base_tables as $entity_base_table => $entity_infos) {
+      $field_instance = domain_entity_entity_field_instance($entity_infos['entity type']);
+      $help = t("This field contains the domain's of the !entity_type.", array('!entity_type' => $entity_infos['entity type']));
+      $title = t('Domain (domain entity)');
+
+      // Domain id filtering.
+      $data['field_data_' . $field_instance['name']][$field_instance['name'] . '_domain_id']['filter']['handler'] = 'domain_entity_views_handler_filter_domain_domain_id';
+      $data['field_data_' . $field_instance['name']][$field_instance['name'] . '_domain_id']['title'] = $title;
+      $data['field_data_' . $field_instance['name']][$field_instance['name'] . '_domain_id']['help'] .= $help;
+
+      $data['field_revision_' . $field_instance['name']][$field_instance['name'] . '_domain_id']['filter']['handler'] = 'domain_entity_views_handler_filter_domain_domain_id';
+      $data['field_revision_' . $field_instance['name']][$field_instance['name'] . '_domain_id']['title'] = $title;
+    }
+  }
 }
 
 /**
@@ -571,25 +624,6 @@ function domain_entity_types_enable_domain_field($entity_types) {
     }
     $entity_info = entity_get_info($entity_type);
 
-    // Look for or add the specified field to the requested entity bundle.
-    $field = field_info_field($field_name);
-
-    if (empty($field)) {
-      if (isset($entity_info['base table'])) {
-        $entity_key = $entity_info['entity keys']['id'];
-        $query = db_select($entity_info['base table'], 'b');
-        $query->addField('b', $entity_key);
-        $unaffiliated_entities = $query->execute()->fetchAll();
-        if (!empty($unaffiliated_entities)) {
-          $entities_to_update[$entity_type] = array();
-          foreach ($unaffiliated_entities as $key => $value) {
-            $id = $value->$entity_key;
-            $entities_to_update[$entity_type][] = $id;
-          }
-
-        }
-      }
-    }
 
     foreach ($bundles as $bundle => $widget) {
       // Look for or add the specified field to the requested entity bundle.
@@ -597,21 +631,35 @@ function domain_entity_types_enable_domain_field($entity_types) {
       if (empty($instance)) {
         domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, key($widget));
         drupal_set_message(t("Domain Access behaviour '@widget' has been enabled on the bundle @type of @entity entity type", array(
-          '@widget' => key($widget),
-          '@type' => $bundle,
-          '@entity' => $entity_type,
+        '@widget' => key($widget),
+        '@type' => $bundle,
+        '@entity' => $entity_type,
         )));
       }
     }
+
+    if (isset($entity_info['base table'])) {
+      $entity_key = $entity_info['entity keys']['id'];
+      $query = db_select($entity_info['base table'], 'b');
+      $query->addField('b', $entity_key);
+      $query->leftJoin('field_data_' . $field_name, 'dom', 'b.' . $entity_key . ' = %alias.entity_id');
+      $query->isNull('dom.' . $field_name . '_domain_id');
+
+      $unaffiliated_entities = $query->execute()->fetchAll();
+      if (!empty($unaffiliated_entities)) {
+        $entities_to_update[$entity_type] = array();
+        foreach ($unaffiliated_entities as $key => $value) {
+          $id = $value->$entity_key;
+          $entities_to_update[$entity_type][] = $id;
+        }
+
+      }
+    }
+
   }
   // Clear cache as we are going to update existing entities field values.
   field_cache_clear();
 
-  // Bypass access restriction to allow the current user,
-  // to access the entity that are not already assigned.
-  $domain_entity_allowed_entity_types_backup = variable_get('domain_entity_allowed_entity_types', array());
-  variable_set('domain_entity_allowed_entity_types_backup', $domain_entity_allowed_entity_types_backup);
-  variable_set('domain_entity_allowed_entity_types', array());
 
   $operations = array();
   foreach ($entities_to_update as $entity_type => $entities) {
@@ -628,7 +676,14 @@ function domain_entity_types_enable_domain_field($entity_types) {
     'error_message' => st('The domain access update has encountered an error.'),
     'finished' => '_domain_entity_update_entity_defaut_value_finished',
   );
-  batch_set($batch);
+  if (count($operations)) {
+    // Bypass access restriction to allow the current user,
+    // to access the entity that are not already assigned.
+    $domain_entity_allowed_entity_types_backup = variable_get('domain_entity_allowed_entity_types', array());
+    variable_set('domain_entity_allowed_entity_types_backup', $domain_entity_allowed_entity_types_backup);
+    variable_set('domain_entity_allowed_entity_types', array());
+    batch_set($batch);
+  }
 }
 
 /**

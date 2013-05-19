@@ -217,6 +217,22 @@ function domain_entity_ui_submit($form, &$form_state) {
       }
     }
   }
+  $old_domain_entity_allowed_entity_types = variable_get('domain_entity_allowed_entity_types', array());
+  if (!empty($old_domain_entity_allowed_entity_types) && !empty($domain_entity_allowed_entity_types)) {
+    $uninstall_entity_types = array_diff(array_keys($old_domain_entity_allowed_entity_types), array_keys($domain_entity_allowed_entity_types));
+    if (!empty($uninstall_entity_types)) {
+      foreach ($uninstall_entity_types as $uninstall_entity_type) {
+        $field_name = 'domain_' . $uninstall_entity_type;
+        if (strlen($field_name) > 21) {
+          $field_name = substr('domain_' . md5($field_name), 0, -7);
+        }
+        foreach ($old_domain_entity_allowed_entity_types[$uninstall_entity_type] as $bundle_name => $data) {
+          $instance = field_info_instance($uninstall_entity_type, $field_name, $bundle_name);
+          field_delete_instance($instance, TRUE);
+        }
+      }
+    }
+  }
   variable_set('domain_entity_allowed_entity_types', $domain_entity_allowed_entity_types);
   drupal_set_message(t('Domain settings updated'));
   domain_entity_types_enable_domain_field($domain_entity_allowed_entity_types);

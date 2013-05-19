@@ -4,6 +4,20 @@
  * Domain Access Entity install function
  */
 
+function domain_entity_install() {
+  $weight = db_select('system', 's')
+  ->fields('s', array('weight'))
+  ->orderBy('s.weight', 'DESC')
+  ->range(0, 1)
+  ->execute()
+  ->fetchField();
+
+  db_update('system')
+  ->fields(array('weight' => $weight +1))
+  ->condition('name', 'domain_entity', '=')
+  ->execute();
+}
+
 /**
  * Implements hook_field_schema().
  */
