@@ -27,7 +27,7 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
     if (count($accessible_domain_ids) == count($domains)) {
       $options['value']['default'] = array('all');
     }
-    else if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
+    elseif (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
       $options['value']['default'] = array('***CURRENT_DOMAIN***');
     }
     else {
