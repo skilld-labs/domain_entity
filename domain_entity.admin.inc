@@ -28,7 +28,7 @@ function domain_entity_ui($form, &$form_state) {
   // Set the form:
   $form = array();
   $form['header'] = array(
-    '#markup' => t('Choose wich entities are under Domain Access control, and choose domain entity widget behavior of bundles'),
+    '#markup' => t('Choose witch entities are under Domain Access control, and choose domain entity widget behavior of bundles'),
   );
   $domain_entity_options = array(
     DOMAIN_ENTITY_BEHAVIOR_AUTO => t('Affiliate automatically entities to a value(s)'),
@@ -65,7 +65,7 @@ function domain_entity_ui($form, &$form_state) {
     foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
       $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_behavior'] = array(
         '#prefix' => '<fieldset><legend><span class="fieldset-legend">' . $bundle_info['label'] . '</span></legend>',
-        '#title' => t("Choose wich behavior Domain entity must use with bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
+        '#title' => t("Choose witch behavior Domain entity must use with bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#type' => 'select',
         '#options' => $domain_entity_options,
         '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array(key($default_values[$entity_name][$bundle_name]) => key($default_values[$entity_name][$bundle_name])) : array(DOMAIN_ENTITY_BEHAVIOR_USER => DOMAIN_ENTITY_BEHAVIOR_USER),
@@ -124,7 +124,7 @@ function domain_entity_ui($form, &$form_state) {
           if ($query->execute()->fetchField()) {
             $form['entities'][$entity_name][$entity_name . '_value']['#description']
               = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
-              t('* Warning you have content of this type in your database, all unassigned content will be assigned to the choosen defaut domain value(s)') .
+              t('* Warning you have content of this type in your database, all unassigned content will be assigned to the choosen default domain value(s)') .
               '</div>';
           }
         }

@@ -23,7 +23,11 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
     $options = parent::option_definition();
     $current_domain = domain_get_domain();
     $accessible_domain_ids = domain_entity_get_user_available_domains();
-    if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
+    $domains = domain_domains();
+    if (count($accessible_domain_ids) == count($domains)) {
+      $options['value']['default'] = array('all');
+    }
+    else if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
       $options['value']['default'] = array('***CURRENT_DOMAIN***');
     }
     else {
@@ -40,18 +44,37 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
     if (!isset($this->value_options)) {
       $current_domain = domain_get_domain();
       $accessible_domain_ids = domain_entity_get_user_available_domains();
-      $this->value_title = t('Domain');
-      $domain_options = array();
-      if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
-        $domain_options = array('***CURRENT_DOMAIN***' => t('Current Domain'));
-      }
       $domains = domain_domains();
+      $domain_options = array();
+      $this->value_title = t('Domain');
+      if (count($accessible_domain_ids) == count($domains)) {
+        $domain_options['all'] = t('All');
+      }
+      if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
+        $domain_options['***CURRENT_DOMAIN***'] = t('Current Domain');
+      }
       foreach ($domains as $domain) {
         if (in_array($domain['domain_id'], $accessible_domain_ids)) {
           $domain_options[$domain['domain_id']] = check_plain($domain['sitename']);
         }
       }
+
       $this->value_options = $domain_options;
     }
+  }
+
+  /**
+   * Override views_handler_filter_in_operator::query().
+   *
+   * Do not add the condition to the query
+   * if the value is a joker.
+   *
+   * @see views_handler_filter_in_operator::query()
+   */
+  function query() {
+    if (in_array('all', $this->value)) {
+      return;
+    }
+    parent::query();
   }
 }
