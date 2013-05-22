@@ -1,4 +1,4 @@
-Overview
+1) Overview
 
 This module provide a solution to add Domain Access on entity.
 
@@ -23,19 +23,25 @@ For administration / administrator:
 
 To use this module with views, you need to disable sql rewriting on some views. (open your views -> go in advanced settings pane -> query settings), if you don't want to disable sql rewriting, you can add manually a view filter on the field that hold the domain(s) entity.
 For administration views you can expose to Editors the filter of the domain field of your entity
-Features
+
+
+2) Features
 
 - Enable Domain Access on entities
 - UI for enabling domain access on entity type, and batch update of existing entities
 - views integration
-Requirements
+
+
+3) Requirements
 
 - Domain Access http://drupal.org/project/domain
 - Entity API http://drupal.org/project/entity
-Extra requirements
 
-To expose domain filter in views: domain views
-Setup
+  Extra requirements:
+- To expose domain filter in views: domain views
+
+
+5) Setup
 
 - Enable domain_entity
 - setup at least one domain..
