@@ -42,3 +42,10 @@ function domain_entity_field_schema($field) {
     );
   }
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+function domain_entity_uninstall() {
+  variable_del('domain_entity_allowed_entity_types');
+}
