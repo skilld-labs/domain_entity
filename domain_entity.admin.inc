@@ -28,7 +28,7 @@ function domain_entity_ui($form, &$form_state) {
   // Set the form:
   $form = array();
   $form['header'] = array(
-    '#markup' => t('Choose witch entities are under Domain Access control, and choose domain entity widget behavior of bundles'),
+    '#markup' => t('Choose which entities are under Domain Access control, and choose domain entity widget behavior of bundles'),
   );
   $domain_entity_options = array(
     DOMAIN_ENTITY_BEHAVIOR_AUTO => t('Affiliate automatically entities to a value(s)'),
