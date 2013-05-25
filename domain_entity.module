@@ -2,13 +2,13 @@
 
 /**
  * @file
- * Defines field (e.g. domain_entity) for entities
- * and access query alter
+ * Defines field (e.g. domain_entity) for entities,
+ * and access query alter.
  */
 
 /**
  * Domain entity behavior widget type, add a hidden field on entity.
- * entity is automatically assigned to the current domain. (invisible for user)
+ * Entity is automatically assigned to the current domain. (invisible for user)
  * @var domain_entity
  */
 define('DOMAIN_ENTITY_BEHAVIOR_AUTO', 'domain_entity_auto_hidden');
@@ -39,7 +39,6 @@ function domain_entity_menu() {
 
   return $items;
 }
-
 
 /**
  * Implements hook_permission().
@@ -283,11 +282,10 @@ function domain_entity_field_instances() {
 
   // If it did not exist, fetch the types now.
   if (!isset($domain_entity_field_instances)) {
-    $query = db_select('field_config', 'fc');
-    $query->condition('fc.type', 'domain_entity', '=');
-    $query->condition('fc.active', TRUE, '=');
-    $query->fields('fc', array('id', 'field_name'));
-    $domain_entity_field_instances = $query->execute()->fetchAll(PDO::FETCH_KEY_PAIR);
+    $query = "SELECT fc.id AS id, fc.field_name AS field_name ";
+    $query .= "FROM {field_config} fc WHERE ";
+    $query .= "(fc.type = 'domain_entity') AND (fc.active = 1)";
+    $domain_entity_field_instances = db_query($query)->fetchAll(PDO::FETCH_KEY_PAIR);
   }
 
   return $domain_entity_field_instances;
@@ -308,11 +306,15 @@ function domain_entity_entity_field_instance($entity_type) {
   // Look for the instance for this type if it's not done.
   if (!isset($domain_entity_entity_field_instance[$entity_type])) {
     $domain_entity_field_instances = domain_entity_field_instances();
-    $query = db_select('field_config_instance', 'fci');
-    $query->condition('fci.entity_type', $entity_type, '=');
-    $query->condition('fci.field_name', $domain_entity_field_instances, 'IN');
-    $query->fields('fci', array('field_name', 'data'));
-    $field_instance = $query->execute()->fetchAll();
+    $query = "SELECT fci.field_name AS field_name, fci.data AS data FROM ";
+    $query .= "{field_config_instance} fci WHERE ";
+    $query .= "(fci.entity_type = :entity_type) AND ";
+    $query .= "(fci.field_name IN (:field_instance))";
+    $args = array(
+      ':entity_type' => $entity_type,
+      ':field_instance' => $domain_entity_field_instances,
+    );
+    $field_instance = db_query($query, $args)->fetchAll();
     if (isset($field_instance[0])) {
       $domain_entity_entity_field_instance[$entity_type] = array(
         'name' => $field_instance[0]->field_name,

@@ -5,23 +5,6 @@
  */
 
 /**
- * Implements hook_install().
- */
-function domain_entity_install() {
-  $weight = db_select('system', 's')
-  ->fields('s', array('weight'))
-  ->orderBy('s.weight', 'DESC')
-  ->range(0, 1)
-  ->execute()
-  ->fetchField();
-
-  db_update('system')
-  ->fields(array('weight' => $weight + 1))
-  ->condition('name', 'domain_entity', '=')
-  ->execute();
-}
-
-/**
  * Implements hook_field_schema().
  */
 function domain_entity_field_schema($field) {
@@ -33,7 +16,7 @@ function domain_entity_field_schema($field) {
           'type' => 'int',
           'unsigned' => TRUE,
           'not null' => TRUE,
-          'default' => 0,
+          'default' => 1,
         ),
       ),
       'indexes' => array(
