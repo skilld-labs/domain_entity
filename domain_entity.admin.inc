@@ -49,7 +49,7 @@ function domain_entity_ui($form, &$form_state) {
 
   // Now build the form elements.
   foreach ($entities_info as $entity_name => $entity_info) {
-    $title_prefix =  isset($default_values[$entity_name]) ? '&#x2713; ' : ' <strong style="color:red;">*</strong> ';
+    $title_prefix = isset($default_values[$entity_name]) ? '&#x2713; ' : ' <strong style="color:red;">*</strong> ';
     $form['entities'][$entity_name] = array(
       '#title' => $title_prefix . $entity_info['label'] . ' (' . $entity_name . ')',
       '#type' => 'fieldset',
@@ -68,7 +68,7 @@ function domain_entity_ui($form, &$form_state) {
       ),
     );
     if (!$entity_info['fieldable']) {
-      $form['entities'][$entity_name][$entity_name . '_value']['#title'] .= '<br><small>' . t('By default, this entity is not fieldable, but he looks like we can change that and make this entity fieldable.') . '</small>';
+      $form['entities'][$entity_name][$entity_name . '_value']['#title'] .= '<br/><small>' . t('By default, this entity is not fieldable, but he looks like we can change that and make this entity fieldable.') . '</small>';
     }
     foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
       $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_behavior'] = array(
