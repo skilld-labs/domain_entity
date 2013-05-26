@@ -17,27 +17,6 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
 
   /**
    * Override views_handler_filter_in_operator::get_value_options().
-   * @see views_handler_filter_in_operator::option_definition()
-   */
-  function option_definition() {
-    $options = parent::option_definition();
-    $current_domain = domain_get_domain();
-    $accessible_domain_ids = domain_entity_get_user_available_domains();
-    $domains = domain_domains();
-    if (count($accessible_domain_ids) == count($domains)) {
-      $options['value']['default'] = array('all');
-    }
-    elseif (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
-      $options['value']['default'] = array('***CURRENT_DOMAIN***');
-    }
-    else {
-      $options['value']['default'] = array(reset($accessible_domain_ids));
-    }
-    return $options;
-  }
-
-  /**
-   * Override views_handler_filter_in_operator::get_value_options().
    * @see views_handler_filter_in_operator::get_value_options()
    */
   function get_value_options() {
@@ -48,7 +27,7 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
       $domain_options = array();
       $this->value_title = t('Domain');
       if (count($accessible_domain_ids) == count($domains)) {
-        $domain_options['all'] = t('All');
+        $domain_options[DOMAIN_ALL] = t('All');
       }
       if (in_array($current_domain['domain_id'], $accessible_domain_ids)) {
         $domain_options['***CURRENT_DOMAIN***'] = t('Current Domain');
@@ -64,6 +43,27 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
   }
 
   /**
+   * Override views_handler_filter_in_operator::value_form().
+   * @see views_handler_filter_in_operator::value_form()
+   */
+  function value_form(&$form, &$form_state) {
+    parent::value_form($form, $form_state);
+    if (isset($form_state['input'][$this->real_field]) && $form_state['input'][$this->real_field] != NULL) {
+      $current_domain = domain_get_domain();
+      $accessible_domain_ids = domain_entity_get_user_available_domains();
+      $domains = domain_domains();
+
+      $possible_options = array_keys($this->value_options);
+
+      // Check if the input is allowed.
+      $value = $form_state['input'][$this->real_field];
+      if (!in_array(reset($value), $possible_options)) {
+        $form_state['input'][$this->real_field] = NULL;
+      }
+    }
+
+  }
+  /**
    * Override views_handler_filter_in_operator::query().
    *
    * Do not add the condition to the query
@@ -72,7 +72,7 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
    * @see views_handler_filter_in_operator::query()
    */
   function query() {
-    if (in_array('all', $this->value)) {
+    if (in_array(DOMAIN_ALL, $this->value)) {
       return;
     }
     parent::query();

@@ -67,7 +67,9 @@ function domain_entity_permission() {
  *   List of entity types.
  */
 function domain_entity_allowed_entity_types() {
-  return variable_get('domain_entity_allowed_entity_types', array());
+  $domain_entity_allowed_entity_types = variable_get('domain_entity_allowed_entity_types', array());
+  drupal_alter('domain_entity_allowed_entity_types', $domain_entity_allowed_entity_types);
+  return $domain_entity_allowed_entity_types;
 }
 
 /**
@@ -187,7 +189,7 @@ function domain_entity_entity_presave($entity, $type) {
   else {
     $default_values = array();
   }
-  if (in_array('all', $default_values)) {
+  if (in_array(DOMAIN_ALL, $default_values)) {
     $values = array();
     $domains = domain_domains();
     foreach ($domains as $domain) {
@@ -196,7 +198,7 @@ function domain_entity_entity_presave($entity, $type) {
       );
     }
   }
-  elseif (in_array('current_domain', $default_values)) {
+  elseif (in_array(DOMAIN_ACTIVE, $default_values)) {
     $values = array(
       0 => array(
         'domain_id' => $current_domain['domain_id'],
@@ -272,7 +274,7 @@ function domain_entity_views_data_alter(&$data) {
 }
 
 /**
- * Get the list of domain_entity field type instances.
+ * Get a keyed list of domain_entity field id and field name.
  * @return array
  *   Array of key(field_id) => field_instance_name.
  */
@@ -280,7 +282,7 @@ function domain_entity_field_instances() {
   // First check the static cache for a domain_entity field instances array.
   $domain_entity_field_instances = &drupal_static(__FUNCTION__);
 
-  // If it did not exist, fetch the types now.
+  // If it did not exist, fetch the fields now.
   if (!isset($domain_entity_field_instances)) {
     $query = "SELECT fc.id AS id, fc.field_name AS field_name ";
     $query .= "FROM {field_config} fc WHERE ";
@@ -292,9 +294,9 @@ function domain_entity_field_instances() {
 }
 
 /**
- * Get the list of domain_entity field type instances.
+ * Get the domain_entity field name and his settings for an entity type.
  * @return String
- *   The name of the bundle field instance.
+ *   The entity type.
  */
 function domain_entity_entity_field_instance($entity_type) {
   // First check the static cache for a domain_entity field instances array.
@@ -303,7 +305,7 @@ function domain_entity_entity_field_instance($entity_type) {
   if (!isset($domain_entity_entity_field_instance)) {
     $domain_entity_entity_field_instance = array();
   }
-  // Look for the instance for this type if it's not done.
+  // Look for an instance of this type, if it's not in the static cache.
   if (!isset($domain_entity_entity_field_instance[$entity_type])) {
     $domain_entity_field_instances = domain_entity_field_instances();
     $query = "SELECT fci.field_name AS field_name, fci.data AS data FROM ";
@@ -374,7 +376,7 @@ function domain_entity_field_is_empty($item, $field) {
 function domain_entity_field_widget_info() {
   return array(
     DOMAIN_ENTITY_BEHAVIOR_AUTO => array(
-      'label' => t('Affiliate automatically entities to a value'),
+      'label' => t('Affiliate automatically created entity to a value (no widget on entity creation form, auto-assignation)'),
       'field types' => array('domain_entity'),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -383,7 +385,7 @@ function domain_entity_field_widget_info() {
     ),
     // This widget allow multiple domain attachment.
     DOMAIN_ENTITY_BEHAVIOR_USER => array(
-      'label' => t('User choose entities affiliation (with a default value)'),
+      'label' => t('User choose affiliate, with a default value (form widget on the entity creation form)'),
       'field types' => array('domain_entity'),
       'behaviors' => array(
         'multiple values' => FIELD_BEHAVIOR_CUSTOM,
@@ -422,12 +424,12 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     // Get default bundle value,
     // e.g (all, current_domain, list(domain_id)).
     $default_bundle_values = reset($allowed_entity_types[$instance['entity_type']][$instance['bundle']]);
-    if (in_array('all', $default_bundle_values)) {
+    if (in_array(DOMAIN_ALL, $default_bundle_values)) {
       foreach ($site_domains as $domain) {
         $default_value[$domain['domain_id']] = $domain['domain_id'];
       }
     }
-    elseif (in_array('current_domain', $default_bundle_values)) {
+    elseif (in_array(DOMAIN_ACTIVE, $default_bundle_values)) {
       $default_value[$current_domain['domain_id']] = $current_domain['domain_id'];
     }
     else {
@@ -620,7 +622,9 @@ function domain_entity_types_enable_domain_field($entity_types) {
   $label = t('Domain');
   $required = TRUE;
   $entities_to_update = array();
-
+  // Reset the entity info, before enabling domain access on entity.
+  // Some entities are not fieldable, but this module force it to.
+  entity_info_cache_clear();
   // Create fields instance.
   foreach ($entity_types as $entity_type => $bundles) {
     $field_name = 'domain_' . $entity_type;
@@ -687,6 +691,9 @@ function domain_entity_types_enable_domain_field($entity_types) {
     variable_set('domain_entity_allowed_entity_types', array());
     batch_set($batch);
   }
+  else {
+    drupal_set_message(t('0 entities updated.'));
+  }
 }
 
 /**
@@ -707,8 +714,9 @@ function _domain_entity_update_entity_defaut_value($entity_type, $entity_id, &$c
 /**
  * Batch operation finished callback.
  */
-function _domain_entity_update_entity_defaut_value_finished() {
+function _domain_entity_update_entity_defaut_value_finished($finished, $results) {
   // Restore entity type domain access.
   variable_set('domain_entity_allowed_entity_types', variable_get('domain_entity_allowed_entity_types_backup', array()));
   variable_del('domain_entity_allowed_entity_types_backup');
+  drupal_set_message(t('%count entities updated.', array('%count' => count($results))));
 }

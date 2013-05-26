@@ -16,23 +16,25 @@
 function domain_entity_ui($form, &$form_state) {
   // Get the domain_entity_allowed_entity_types values:
   $default_values = domain_entity_allowed_entity_types();
+
+  // Do not allow domain access on entity that are actually bundle.
   $entities_info = entity_get_info();
+  foreach ($entities_info as $entity_type => $entity_info) {
+    if (isset($entity_info['bundle of']) || !isset($entity_info['entity keys']['bundle']) || empty($entity_info['entity keys']['bundle'])) {
+      unset($entities_info[$entity_type]);
+    }
+  }
   // Domain access take care of it:
   unset($entities_info['node']);
-  // I think this necessit an other module
-  // (login, register handling.. to be tested):
-  unset($entities_info['user']);
-  // Don't know too much about taxonomy vocabulary entity..,
-  // for the moment disable it:
-  unset($entities_info['taxonomy_vocabulary']);
+
   // Set the form:
   $form = array();
   $form['header'] = array(
     '#markup' => t('Choose which entities are under Domain Access control, and choose domain entity widget behavior of bundles'),
   );
   $domain_entity_options = array(
-    DOMAIN_ENTITY_BEHAVIOR_AUTO => t('Affiliate automatically entities to a value(s)'),
-    DOMAIN_ENTITY_BEHAVIOR_USER => t('User choose entities affiliation (with a default value(s))'),
+    DOMAIN_ENTITY_BEHAVIOR_AUTO => t('Affiliate automatically created entity to a value (no widget on entity creation form, auto-assignation)'),
+    DOMAIN_ENTITY_BEHAVIOR_USER => t('User choose affiliate, with a default value (form widget on the entity creation form)'),
   );
   $form['entities'] = array(
     '#prefix' => '<div id="domain-entity-ui-form-ajax">',
@@ -40,16 +42,19 @@ function domain_entity_ui($form, &$form_state) {
   );
   // Construct widget default values options:
   $site_domains = domain_domains();
-  $checkboxes = array('current_domain' => t('Current domain'), 'all' => t('Send to all affiliates'));
+  $checkboxes = array(DOMAIN_ACTIVE => t('Current domain'), DOMAIN_ALL => t('Send to all affiliates'));
   foreach ($site_domains as $site_domain) {
     $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
   }
 
   // Now build the form elements.
   foreach ($entities_info as $entity_name => $entity_info) {
+    $title_prefix =  isset($default_values[$entity_name]) ? '&#x2713; ' : ' <strong style="color:red;">*</strong> ';
     $form['entities'][$entity_name] = array(
-      '#title' => '&#x2713; ' . $entity_info['label'] . ' (' . $entity_name . ')',
+      '#title' => $title_prefix . $entity_info['label'] . ' (' . $entity_name . ')',
       '#type' => 'fieldset',
+      '#collapsible' => TRUE,
+      '#collapsed' => isset($default_values[$entity_name]),
     );
     $form['entities'][$entity_name][$entity_name . '_value'] = array(
       '#title' => t('Activate domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name)),
@@ -62,10 +67,13 @@ function domain_entity_ui($form, &$form_state) {
         'effect' => 'none',
       ),
     );
+    if (!$entity_info['fieldable']) {
+      $form['entities'][$entity_name][$entity_name . '_value']['#title'] .= '<br><small>' . t('By default, this entity is not fieldable, but he looks like we can change that and make this entity fieldable.') . '</small>';
+    }
     foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
       $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_behavior'] = array(
-        '#prefix' => '<fieldset><legend><span class="fieldset-legend">' . $bundle_info['label'] . '</span></legend>',
-        '#title' => t("Choose witch behavior Domain entity must use with bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
+        '#prefix' => '<fieldset class="form-wrapper"><legend><span class="fieldset-legend">' . $bundle_info['label'] . '</span></legend>',
+        '#title' => t("Choose which behavior must be used with the bundle @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
         '#type' => 'select',
         '#options' => $domain_entity_options,
         '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? array(key($default_values[$entity_name][$bundle_name]) => key($default_values[$entity_name][$bundle_name])) : array(DOMAIN_ENTITY_BEHAVIOR_USER => DOMAIN_ENTITY_BEHAVIOR_USER),
@@ -75,7 +83,7 @@ function domain_entity_ui($form, &$form_state) {
         '#type' => 'checkboxes',
         '#options' => $checkboxes,
         '#title' => t("default domain value(s) for the bundle: @bundle_label ('@bundle_name')", array('@bundle_label' => $bundle_info['label'], '@bundle_name' => $bundle_name)),
-        '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? reset($default_values[$entity_name][$bundle_name]) : array('current_domain' => 'current_domain'),
+        '#default_value' => (isset($default_values[$entity_name]) && isset($default_values[$entity_name][$bundle_name])) ? reset($default_values[$entity_name][$bundle_name]) : array(DOMAIN_ACTIVE => DOMAIN_ACTIVE),
         '#required' => TRUE,
         '#suffix' => '</fieldset>',
         '#ajax' => array(
@@ -91,16 +99,16 @@ function domain_entity_ui($form, &$form_state) {
 
       if (!empty($form_state['values'])) {
         if (isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'])) {
-          if ((isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain']) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain'] === 'current_domain') || (isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['all']) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['all'] === 'all')) {
+          if ((isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ACTIVE]) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ACTIVE] === DOMAIN_ACTIVE) || (isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ALL]) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ALL] === DOMAIN_ALL)) {
             foreach ($site_domains as $site_domain) {
               $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][$site_domain['domain_id']] = 0;
               $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values'][$site_domain['domain_id']]['#disabled'] = TRUE;
             }
-            if ((isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain']) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain'] === 'current_domain')) {
-              $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values']['all']['#disabled'] = TRUE;
+            if ((isset($form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ACTIVE]) && $form_state['values'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ACTIVE] === DOMAIN_ACTIVE)) {
+              $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ALL]['#disabled'] = TRUE;
             }
             else {
-              $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values']['current_domain']['#disabled'] = TRUE;
+              $form['entities'][$entity_name]['bundles'][$entity_name . '_' . $bundle_name . '_default_values'][DOMAIN_ACTIVE]['#disabled'] = TRUE;
             }
           }
         }
@@ -114,17 +122,15 @@ function domain_entity_ui($form, &$form_state) {
       }
       else {
         $form['entities'][$entity_name]['bundles']['#access'] = TRUE;
-        $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
+        $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name), all entities domain assignation values will be deleted.', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
         $form['entities'][$entity_name]['#type'] = 'fieldset';
         // Check if content of this type exist in DB, if so prompt a warning:
         if (isset($entity_info['base table'])) {
-          $entity_key = $entity_info['entity keys']['id'];
-          $query = db_select($entity_info['base table'], 'b');
-          $query->addField('b', $entity_key);
-          if ($query->execute()->fetchField()) {
+          $query = "SELECT b." . $entity_info['entity keys']['id'] . " FROM {" . $entity_info['base table'] . "} b";
+          if (db_query($query)->fetchField()) {
             $form['entities'][$entity_name][$entity_name . '_value']['#description']
               = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
-              t('* Warning you have entities of this type in your database, all unassigned entities will be assigned to the choosen default domain value(s), if you select "current domain" the unassigned entities will be assigned to the current domain. You can change the default value afterway without altering the existing entities domain value(s).') .
+              t('* Beware you have entities of this type in your database, all unassigned entities will be assigned to the choosen default domain value(s), if you select "current domain" the unassigned entities will be assigned to the current domain. You can change the default value afterway without altering the existing entities domain value(s).') .
               '</div>';
           }
         }
@@ -142,14 +148,14 @@ function domain_entity_ui($form, &$form_state) {
     }
     else {
       $form['entities'][$entity_name]['bundles']['#access'] = TRUE;
-      $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name)', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
+      $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name), all entities domain assignation values will be deleted.', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
       $form['entities'][$entity_name]['#type'] = 'fieldset';
     }
 
   }
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Save & Assign existing entities to the default domain'),
+    '#value' => t('Save'),
   );
   return $form;
 }
@@ -182,18 +188,21 @@ function domain_entity_ui_form_ajax_callback($form, &$form_state) {
  */
 function domain_entity_ui_submit($form, &$form_state) {
   $values = $form_state['values'];
-  // Set the form.
+
+  // Do not allow domain access on entity that are actually bundle.
   $entities_info = entity_get_info();
+  foreach ($entities_info as $entity_type => $entity_info) {
+    if (isset($entity_info['bundle of']) || !isset($entity_info['entity keys']['bundle']) || empty($entity_info['entity keys']['bundle'])) {
+      unset($entities_info[$entity_type]);
+    }
+  }
   // Domain access take care of it:
   unset($entities_info['node']);
-  // I think this necessit an other module
-  // (login, register handling.. to be tested):
-  unset($entities_info['user']);
-  // Don't know too much about taxonomy vocabulary entity..,
-  // for the moment disable it:
-  unset($entities_info['file']);
+
+  // Just a bundle entity:
   unset($entities_info['taxonomy_vocabulary']);
 
+  // Set the form.
   $domain_entity_allowed_entity_types = array();
   foreach ($entities_info as $entity_name => $entity_info) {
     if ($values[$entity_name . '_value']) {
@@ -201,14 +210,14 @@ function domain_entity_ui_submit($form, &$form_state) {
       foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
         $default_values = array();
         foreach ($values[$entity_name . '_' . $bundle_name . '_default_values'] as $key => $value) {
-          if ($key == $value && $key !== 'current_domain' && $key !== 'all') {
+          if ($key == $value && $key !== DOMAIN_ACTIVE && $key !== DOMAIN_ALL) {
             $default_values[$key] = $value;
           }
-          if ($key === 'current_domain' && $value === 'current_domain') {
+          if ($key === DOMAIN_ACTIVE && $value === DOMAIN_ACTIVE) {
             $default_values = array($key => $value);
             break;
           }
-          if ($key === 'all' && $value === 'all') {
+          if ($key === DOMAIN_ALL && $value === DOMAIN_ALL) {
             $default_values = array($key => $value);
             break;
           }
@@ -229,11 +238,12 @@ function domain_entity_ui_submit($form, &$form_state) {
         foreach ($old_domain_entity_allowed_entity_types[$uninstall_entity_type] as $bundle_name => $data) {
           $instance = field_info_instance($uninstall_entity_type, $field_name, $bundle_name);
           field_delete_instance($instance, TRUE);
+          drupal_set_message(t('Domain access has been disabled on %entity_name', array('%entity_name' => $uninstall_entity_type)));
         }
       }
     }
   }
   variable_set('domain_entity_allowed_entity_types', $domain_entity_allowed_entity_types);
-  drupal_set_message(t('Domain settings updated'));
   domain_entity_types_enable_domain_field($domain_entity_allowed_entity_types);
+  drupal_set_message(t('Domain entity settings updated'));
 }
