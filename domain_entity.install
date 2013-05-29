@@ -36,7 +36,7 @@ function domain_entity_field_schema($field) {
 function domain_entity_update_7000() {
   $allowed_entity = variable_get('domain_entity_allowed_entity_types', array());
   foreach ($allowed_entity as $entity_name => $bundle) {
-    foreach($bundle as $bundle_name => $widget) {
+    foreach ($bundle as $bundle_name => $widget) {
       $default_value = reset($widget);
       if (reset($default_value) == 'all') {
         $allowed_entity[$entity_name][$bundle_name][key($widget)] = array(DOMAIN_ALL => DOMAIN_ALL);
