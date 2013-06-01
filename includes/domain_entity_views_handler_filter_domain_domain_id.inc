@@ -57,7 +57,10 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
 
       // Check if the input is allowed.
       $value = $form_state['input'][$this->real_field];
-      if (!in_array(reset($value), $possible_options)) {
+      if (is_array($value)) {
+        $value = reset($value);
+      }
+      if (!in_array($value, $possible_options)) {
         $form_state['input'][$this->real_field] = NULL;
       }
     }
