@@ -152,7 +152,7 @@ function domain_entity_get_user_available_domains($user = NULL) {
   $accessible_domain_ids = array($current_domain['domain_id']);
   // Middle office editors with permission see in administration,
   // entity from her lists of assigned domains.
-  if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains')) {
+  if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains', $user)) {
     $user_domain = domain_get_user_domains($user);
     $accessible_domain_ids = !empty($user_domain) ? $user_domain : $accessible_domain_ids;
   }
@@ -463,15 +463,11 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     foreach ($site_domains as $domain) {
       // We let the super user override this restriction.
       if (!in_array($domain['domain_id'], $user_granted_domain_ids) && $user->uid != 1) {
-        $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
-        $is_editable = FALSE;
-      }
-      else {
-        $is_editable = TRUE;
+        unset($element['domain_id']['#options'][$domain['domain_id']]);
       }
     }
-    if (!$is_editable) {
-      $element['domain_id']['#disabled'] = TRUE;
+    if (empty($element['domain_id']['#options'])) {
+      $element['domain_id']['#access'] = FALSE;
     }
   }
   if ($widget['type'] == DOMAIN_ENTITY_BEHAVIOR_AUTO) {
