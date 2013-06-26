@@ -7,6 +7,12 @@
  */
 
 /**
+ * Domain entity Joker domain value, means "Send to all...".
+ * @var domain_entity
+ */
+define('DOMAIN_ENTITY_SEND_TO_ALL', 0);
+
+/**
  * Domain entity behavior widget type, add a hidden field on entity.
  * Entity is automatically assigned to the current domain. (invisible for user)
  * @var domain_entity
@@ -61,10 +67,32 @@ function domain_entity_permission() {
 }
 
 /**
- * Return the list of the domain_entity fieldable entity types.
+ * Return the list of the domain_entity allowed entity types.
  *
  * @return array
- *   List of entity types.
+ *   List of entity types. This array is structured as follow:
+ *   array(
+ *     entity_type => array(
+ *       bundle => array(
+ *         widget_behaviour => array(
+ *           default_value => default_value,
+ *         ),
+ *       ),
+ *       other bundle => etc..
+ *     ),
+ *     other entity => etc..
+ *   );
+ *
+ *   Example :
+ *   array(
+ *     'commerce_order' => array(
+ *       'commerce_order' => array(
+ *         DOMAIN_ENTITY_BEHAVIOR_USER => array(
+ *           DOMAIN_ACTIVE => DOMAIN_ACTIVE
+ *         ),
+ *       ),
+ *     ),
+ *    );
  */
 function domain_entity_allowed_entity_types() {
   $domain_entity_allowed_entity_types = variable_get('domain_entity_allowed_entity_types', array());
@@ -116,6 +144,9 @@ function domain_entity_query_alter(&$query) {
     // prepare our custom access conditions.
     // Get the accessible domain id's by the current user, in the current path.
     $accessible_domain_ids = domain_entity_get_user_available_domains();
+    // Show to all user the entities that are assigned to all domains,
+    // add the joker domain entity value to the list of the domain id's.
+    $accessible_domain_ids[] = DOMAIN_ENTITY_SEND_TO_ALL;
     // Get the entity_type and key for this base_table:
     $entity_type = $domain_entity_bases_table[$base_table]['entity type'];
     $entity_key = $domain_entity_bases_table[$base_table]['entity key'];
@@ -191,12 +222,9 @@ function domain_entity_entity_presave($entity, $type) {
   }
   if (in_array(DOMAIN_ALL, $default_values)) {
     $values = array();
-    $domains = domain_domains();
-    foreach ($domains as $domain) {
-      $values[] = array(
-        'domain_id' => $domain['domain_id'],
-      );
-    }
+    $values[] = array(
+      'domain_id' => DOMAIN_ENTITY_SEND_TO_ALL,
+    );
   }
   elseif (in_array(DOMAIN_ACTIVE, $default_values)) {
     $values = array(
@@ -413,34 +441,32 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
 
   $allowed_entity_types = domain_entity_allowed_entity_types();
   $site_domains = domain_domains();
-  $checkboxes = array();
+  $checkboxes = array(DOMAIN_ENTITY_SEND_TO_ALL => t('Send to all affiliates'));
   foreach ($site_domains as $site_domain) {
     $checkboxes[$site_domain['domain_id']] = $site_domain['sitename'];
   }
 
   // Set the domain default value if no value has been set :
-  $default_value = array();
+  $default_values = array();
   if (!isset($items[0]) || empty($items[0]) || !isset($items[0]['domain_id'])) {
     // Get default bundle value,
     // e.g (all, current_domain, list(domain_id)).
     $default_bundle_values = reset($allowed_entity_types[$instance['entity_type']][$instance['bundle']]);
     if (in_array(DOMAIN_ALL, $default_bundle_values)) {
-      foreach ($site_domains as $domain) {
-        $default_value[$domain['domain_id']] = $domain['domain_id'];
-      }
+      $default_values[DOMAIN_ENTITY_SEND_TO_ALL] = DOMAIN_ENTITY_SEND_TO_ALL;
     }
     elseif (in_array(DOMAIN_ACTIVE, $default_bundle_values)) {
-      $default_value[$current_domain['domain_id']] = $current_domain['domain_id'];
+      $default_values[$current_domain['domain_id']] = $current_domain['domain_id'];
     }
     else {
       foreach ($default_bundle_values as $did) {
-        $default_value[$did] = $did;
+        $default_values[$did] = $did;
       }
     }
   }
   else {
     foreach ($items as $delta => $item) {
-      $default_value[$item['domain_id']] = $item['domain_id'];
+      $default_values[$item['domain_id']] = $item['domain_id'];
     }
   }
 
@@ -449,7 +475,7 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     '#type' => 'checkboxes',
     '#options' => $checkboxes,
     '#title' => t('Domain'),
-    '#default_value' => $default_value,
+    '#default_value' => $default_values,
     '#required' => TRUE,
     '#element_validate' => array('domain_entity_widget_multiple_values_form_validate'),
     '#entity_type' => $instance['entity_type'],
@@ -462,7 +488,7 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
     $is_editable = TRUE;
     foreach ($site_domains as $domain) {
       // We let the super user override this restriction.
-      if (!in_array($domain['domain_id'], $user_granted_domain_ids) && $user->uid != 1) {
+      if (!in_array($domain['domain_id'], $user_granted_domain_ids) && $domain['domain_id'] != 0 && $user->uid != 1) {
         unset($element['domain_id']['#options'][$domain['domain_id']]);
       }
     }
@@ -488,10 +514,8 @@ function domain_entity_widget_multiple_values_form_validate($element, &$form_sta
   }
   $values = $element['#value'];
   $active_domain = array();
-  foreach ($values as $domain_id => $active) {
-    if ($active) {
-      $active_domain[] = array('domain_id' => $domain_id);
-    }
+  foreach ($values as $domain_id) {
+    $active_domain[] = array('domain_id' => $domain_id);
   }
   $items = array();
   foreach ($active_domain as $domain) {
