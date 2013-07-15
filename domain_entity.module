@@ -277,7 +277,7 @@ function domain_entity_views_api() {
 }
 
 /**
- * Implements hook_views_data().
+ * Implements hook_views_data_alter().
  */
 function domain_entity_views_data_alter(&$data) {
   if (module_exists('domain_views')) {
@@ -394,7 +394,7 @@ function domain_entity_field_info() {
  */
 function domain_entity_field_is_empty($item, $field) {
   if ($field['type'] == 'domain_entity') {
-    return !isset($item['domain_id']) || $item['domain_id'] == NULL;
+    return !isset($item['domain_id']) || $item['domain_id'] === NULL;
   }
 }
 
@@ -523,6 +523,11 @@ function domain_entity_widget_multiple_values_form_validate($element, &$form_sta
   }
   // Emulate multivalue field. Unset last parent to prevent errors.
   array_pop($element['#parents']);
+
+  // Put the value of DOMAIN_ENTITY_SEND_TO_ALL (e.g. 0) to the end of the array.
+  $items = array_reverse($items);
+
+  // Set the domain values.
   form_set_value($element, $items, $form_state);
 }
 
@@ -535,7 +540,7 @@ function domain_entity_form_field_ui_field_edit_form_alter(&$form, &$form_state,
     $form['instance']['required']['#disabled'] = TRUE;
     $form['field']['cardinality']['#value'] = FIELD_CARDINALITY_UNLIMITED;
     $form['field']['cardinality']['#disabled'] = TRUE;
-    $form['field']['cardinality']['#description'] = t('This field widget allow only unlimited values (in fact it will be the number of active domain).');
+    $form['field']['cardinality']['#description'] = t('This field widget allow only unlimited values (the number of active domain).');
   }
 }
 
