@@ -482,17 +482,23 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
   );
 
   if (!user_access('set domain access status for all entities')) {
+    // Send to all affiliates should not be accessible.
+    $element['domain_id'][DOMAIN_ENTITY_SEND_TO_ALL]['#disabled'] = TRUE;
+
     // Disable the domain checkbox that the user cannot edit.
     global $user;
     $user_granted_domain_ids = domain_get_user_domains($user);
-    $is_editable = TRUE;
+    $is_editable = FALSE;
     foreach ($site_domains as $domain) {
       // We let the super user override this restriction.
       if (!in_array($domain['domain_id'], $user_granted_domain_ids) && $domain['domain_id'] != 0 && $user->uid != 1) {
-        unset($element['domain_id']['#options'][$domain['domain_id']]);
+        $element['domain_id'][$domain['domain_id']]['#disabled'] = TRUE;
+      }
+      else {
+        $is_editable = TRUE;
       }
     }
-    if (empty($element['domain_id']['#options'])) {
+    if (!$is_editable) {
       $element['domain_id']['#access'] = FALSE;
     }
   }
