@@ -55,4 +55,6 @@ function domain_entity_update_7000() {
  */
 function domain_entity_uninstall() {
   variable_del('domain_entity_allowed_entity_types');
+  variable_del('domain_entity_bypass_access_conditions');
+  variable_del('domain_entity_bypass_access_conditions_backup');
 }

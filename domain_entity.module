@@ -92,7 +92,7 @@ function domain_entity_permission() {
  *         ),
  *       ),
  *     ),
- *    );
+ *   );
  */
 function domain_entity_allowed_entity_types() {
   $domain_entity_allowed_entity_types = variable_get('domain_entity_allowed_entity_types', array());
@@ -129,7 +129,7 @@ function domain_entity_allowed_entity_types_base_tables() {
  * add domain access conditions.
  */
 function domain_entity_query_alter(&$query) {
-  if (method_exists($query, 'getTables')) {
+  if (!variable_get('domain_entity_bypass_access_conditions', FALSE) && method_exists($query, 'getTables')) {
     $tables = $query->getTables();
     $base_table_alias = key($tables);
     $base_table = $tables[$base_table_alias]['table'];
@@ -658,10 +658,7 @@ function domain_entity_types_enable_domain_field($entity_types) {
   entity_info_cache_clear();
   // Create fields instance.
   foreach ($entity_types as $entity_type => $bundles) {
-    $field_name = 'domain_' . $entity_type;
-    if (strlen($field_name) > 21) {
-      $field_name = substr('domain_' . md5($field_name), 0, -7);
-    }
+    $field_name = domain_entity_get_entity_field_name($entity_type);
     $entity_info = entity_get_info($entity_type);
 
     foreach ($bundles as $bundle => $widget) {
@@ -718,8 +715,8 @@ function domain_entity_types_enable_domain_field($entity_types) {
     // Bypass access restriction to allow the current user,
     // to access the entity that are not already assigned.
     $domain_entity_allowed_entity_types_backup = variable_get('domain_entity_allowed_entity_types', array());
-    variable_set('domain_entity_allowed_entity_types_backup', $domain_entity_allowed_entity_types_backup);
-    variable_set('domain_entity_allowed_entity_types', array());
+    variable_set('domain_entity_bypass_access_conditions_backup', variable_get('domain_entity_bypass_access_conditions', FALSE));
+    variable_set('domain_entity_bypass_access_conditions', TRUE);
     batch_set($batch);
   }
   else {
@@ -733,9 +730,9 @@ function domain_entity_types_enable_domain_field($entity_types) {
 function _domain_entity_update_entity_defaut_value($entity_type, $entity_id, &$context) {
   $entity = entity_load_single($entity_type, $entity_id);
   if ($entity) {
-    variable_set('domain_entity_allowed_entity_types', variable_get('domain_entity_allowed_entity_types_backup', array()));
+    // Just call entity_save(), the hook domain_entity_entity_presave()
+    // take care of the field domain default assignation(s), if nothing is set.
     entity_save($entity_type, $entity);
-    variable_set('domain_entity_allowed_entity_types', array());
     $context['results'][] = $entity_type . ' - Id : ' . $entity_id . ' updated.';
     $context['message'] = t('Updated: %entity_type - ID : %entity_id.', array('%entity_type' => $entity_type, '%entity_id' => $entity_id));
   }
@@ -747,7 +744,21 @@ function _domain_entity_update_entity_defaut_value($entity_type, $entity_id, &$c
  */
 function _domain_entity_update_entity_defaut_value_finished($finished, $results) {
   // Restore entity type domain access.
-  variable_set('domain_entity_allowed_entity_types', variable_get('domain_entity_allowed_entity_types_backup', array()));
-  variable_del('domain_entity_allowed_entity_types_backup');
+  variable_set('domain_entity_bypass_access_conditions', variable_get('domain_entity_bypass_access_conditions_backup', FALSE));
+  variable_del('domain_entity_bypass_access_conditions_backup');
   drupal_set_message(t('%count entities updated.', array('%count' => count($results))));
+}
+
+/**
+ * Return the name of the field for an entity type.
+ *
+ * @param String $entity_type
+ *   The type of the entity that hold the field.
+ */
+function domain_entity_get_entity_field_name($entity_type) {
+ $field_name = 'domain_' . $entity_type;
+ if (strlen($field_name) > 21) {
+  $field_name = substr('domain_' . md5($field_name), 0, -7);
+ }
+ return $field_name;
 }
