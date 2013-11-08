@@ -584,6 +584,22 @@ function domain_entity_field_data_property_info($name = NULL) {
 }
 
 /**
+ * Implements hook_commerce_product_reference_default_delta_alter().
+ */
+function domain_entity_commerce_product_reference_default_delta_alter(&$delta, $products) {
+ $allowed_entity_types = domain_entity_allowed_entity_types();
+ if (!in_array('commerce_product', array_keys($allowed_entity_types))) {
+  return;
+ }
+ foreach ($products as $new_delta => $product) {
+  if (!empty($product)) {
+   $delta = $new_delta;
+   return;
+  }
+ }
+}
+
+/**
  * Create a field instance.
  */
 function domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, $widget, $description = NULL, $weight = 0, $display = array()) {
