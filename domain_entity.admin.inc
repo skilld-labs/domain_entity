@@ -132,15 +132,13 @@ function domain_entity_ui($form, &$form_state) {
         $form['entities'][$entity_name][$entity_name . '_value']['#title'] = t('un-check for disabling domain access on @entity_label (@entity_name), all entities domain assignation values will be deleted.', array('@entity_label' => $entity_info['label'], '@entity_name' => $entity_name));
         $form['entities'][$entity_name]['#type'] = 'fieldset';
         // Check if content of this type exist in DB, if so prompt a warning:
-        if (isset($entity_info['base table'])) {
-          $query = "SELECT b." . $entity_info['entity keys']['id'] . " FROM {" . $entity_info['base table'] . "} b";
-          if (db_query($query)->fetchField()) {
-            $form['entities'][$entity_name][$entity_name . '_value']['#description']
-              = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
-              t('* Beware you have entities of this type in your database, all unassigned entities will be assigned to the choosen default domain value(s), if you select "current domain" the unassigned entities will be assigned to the current domain. You can change the default value afterway without altering the existing entities domain value(s).') .
-              '</div>';
-          }
-        }
+       $query = new EntityFieldQuery();
+       $query->entityCondition('entity_type', $entity_name);
+       if ($query->execute()) {
+         $form['entities'][$entity_name][$entity_name . '_value']['#description']
+           = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
+           t('* Beware you have entities of this type in your database, all unassigned entities will be assigned to the choosen default domain value(s), if you select "current domain" the unassigned entities will be assigned to the current domain. You can change the default value afterway without altering the existing entities domain value(s).') .
+           '</div>';
       }
       $form['entities']['#prefix']
         = '<div id="domain-entity-ui-form-ajax">' .

@@ -727,28 +727,27 @@ function domain_entity_types_enable_domain_field($entity_types) {
       }
     }
 
-    if (isset($entity_info['base table'])) {
-      $entity_key = $entity_info['entity keys']['id'];
-      $query = db_select($entity_info['base table'], 'b');
-      $query->addField('b', $entity_key);
-      $query->leftJoin('field_data_' . $field_name, 'dom', 'b.' . $entity_key . ' = %alias.entity_id');
-      $query->isNull('dom.' . $field_name . '_domain_id');
+    // Query to look at unafilliated entities.
+    $entity_key = $entity_info['entity keys']['id'];
 
-      $unaffiliated_entities = $query->execute()->fetchAll();
-      if (!empty($unaffiliated_entities)) {
-        $entities_to_update[$entity_type] = array();
-        foreach ($unaffiliated_entities as $key => $value) {
-          $id = $value->$entity_key;
-          $entities_to_update[$entity_type][] = $id;
-        }
+    $query = new EntityFieldQuery;
+    $query->entityCondition('entity_type', $entity_type);
+    $query->fieldCondition($field_name, 'domain_id', NULL);
+    $unaffiliated_entities = $query->execute();
 
-      }
-    }
+    if (!empty($unaffiliated_entities[$entity_type])) {
+      $entities_to_update[$entity_type] = array();
+      foreach ($unaffiliated_entities[$entity_type] as $key => $value) {
+        $id = $value->$entity_key;
+        $entities_to_update[$entity_type][] = $id;
+       }
+     }
 
   }
   // Clear cache as we are going to update existing entities field values.
   field_cache_clear();
 
+  // Create a batch operation to update entities that are not affiliated to a domain.
   $operations = array();
   foreach ($entities_to_update as $entity_type => $entities) {
     foreach ($entities as $entity_id) {
