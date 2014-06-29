@@ -390,6 +390,43 @@ function domain_entity_field_info() {
 }
 
 /**
+ * Implements hook_field_formatter_info().
+ */
+function domain_entity_field_formatter_info() {
+  return array(
+    'domain_entity_sitename' => array(
+      'label' => t('Name'),
+      'field types' => array('domain_entity'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function domain_entity_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $settings = $display['settings'];
+
+  switch ($display['type']) {
+    case 'domain_entity_sitename':
+      foreach ($items as $delta => $item) {
+        $domain = domain_load($item['domain_id']);
+
+        if ($domain) {
+          $element[$delta] = array('#markup' => $domain['sitename']);
+        }
+        else {
+          $element[$delta] = array('#markup' => t('Invalid domain'));
+        }
+      }
+      break;
+  }
+
+  return $element;
+}
+
+/**
  * Implements of hook_field_is_empty().
  */
 function domain_entity_field_is_empty($item, $field) {
