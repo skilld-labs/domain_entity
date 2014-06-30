@@ -135,7 +135,7 @@ function domain_entity_ui($form, &$form_state) {
         $query = new EntityFieldQuery();
         $query->entityCondition('entity_type', $entity_name);
         if ($query->execute()) {
-         $form['entities'][$entity_name][$entity_name . '_value']['#description']
+          $form['entities'][$entity_name][$entity_name . '_value']['#description']
            = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
            t('* Beware you have entities of this type in your database, all unassigned entities will be assigned to the choosen default domain value(s), if you select "current domain" the unassigned entities will be assigned to the current domain. You can change the default value afterway without altering the existing entities domain value(s).') .
            '</div>';
