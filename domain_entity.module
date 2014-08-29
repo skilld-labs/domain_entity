@@ -135,8 +135,8 @@ function domain_entity_query_alter(&$query) {
     $base_table = $tables[$base_table_alias]['table'];
 
     // Have we to check access for this entity types.
-    $domain_entity_bases_table = domain_entity_allowed_entity_types_base_tables();
-    if (!in_array($base_table, array_keys($domain_entity_bases_table))) {
+    $domain_entity_base_tables = domain_entity_allowed_entity_types_base_tables();
+    if (!in_array($base_table, array_keys($domain_entity_base_tables))) {
       return;
     }
 
@@ -148,8 +148,8 @@ function domain_entity_query_alter(&$query) {
     // add the joker domain entity value to the list of the domain id's.
     $accessible_domain_ids[] = DOMAIN_ENTITY_SEND_TO_ALL;
     // Get the entity_type and key for this base_table:
-    $entity_type = $domain_entity_bases_table[$base_table]['entity type'];
-    $entity_key = $domain_entity_bases_table[$base_table]['entity key'];
+    $entity_type = $domain_entity_base_tables[$base_table]['entity type'];
+    $entity_key = $domain_entity_base_tables[$base_table]['entity key'];
     // Get the field name for this entity:
     $field_instance = domain_entity_entity_field_instance($entity_type);
     $field_instance_name = $field_instance['name'];
@@ -172,9 +172,10 @@ function domain_entity_query_alter(&$query) {
  * @return array
  *   List of domain id's.
  */
-function domain_entity_get_user_available_domains($user = NULL) {
-  if (!is_object($user)) {
+function domain_entity_get_user_available_domains($account = NULL) {
+  if (!is_object($account)) {
     global $user;
+    $account = $user;
   }
   // Get the current user list of granted domain id:
   // the current domain id OR for middle-office editors:
@@ -183,8 +184,8 @@ function domain_entity_get_user_available_domains($user = NULL) {
   $accessible_domain_ids = array($current_domain['domain_id']);
   // Middle office editors with permission see in administration,
   // entity from her lists of assigned domains.
-  if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains', $user)) {
-    $user_domain = domain_get_user_domains($user);
+  if (path_is_admin(current_path()) && user_access('access entities affiliate on assigned domains', $account)) {
+    $user_domain = domain_get_user_domains($account);
     $accessible_domain_ids = !empty($user_domain) ? $user_domain : $accessible_domain_ids;
   }
   return $accessible_domain_ids;
@@ -368,7 +369,53 @@ function domain_entity_entity_info_alter(&$entity_info) {
   $entities = domain_entity_allowed_entity_types();
   foreach ($entities as $entity_name => $entity_bundles) {
     $entity_info[$entity_name]['fieldable'] = TRUE;
+    // Store the default access callback before we change it.
+    if (isset($entity_info[$entity_name]['access callback'])) {
+      $entity_info[$entity_name]['default access callback'] = $entity_info[$entity_name]['access callback'];
+    }
+    $entity_info[$entity_name]['access callback'] = 'domain_entity_entity_access_callback';
   }
+}
+
+/**
+ * Entity access callback.
+ * @see domain_entity_entity_info_alter(), hook_entity_info().
+ */
+function domain_entity_entity_access_callback($op, $entity, $account, $entity_type) {
+  if (!variable_get('domain_entity_bypass_access_conditions', FALSE)) {
+    if (is_object($entity) && !in_array($op, array(
+      'create',
+      'add',
+    ))) {
+      // Get accessible domains for the given user.
+      $accessible_domain_ids = domain_entity_get_user_available_domains($account);
+      $accessible_domain_ids[] = DOMAIN_ENTITY_SEND_TO_ALL;
+      // Get the assigned domains for the current entity.
+      $field_name = domain_entity_get_entity_field_name($entity_type);
+      $items = field_get_items($entity_type, $entity, $field_name);
+
+      $access = FALSE;
+      foreach ($items as $item) {
+        if (in_array($item['domain_id'], $accessible_domain_ids)) {
+          $access = TRUE;
+          break;
+        }
+      }
+      // We may restrict access, but will never widen it.
+      if (!$access) {
+        return FALSE;
+      }
+    }
+  }
+
+  // Fallback to default behavior.
+  $info = entity_get_info($entity_type);
+  if (isset($info['default access callback'])) {
+    $default_callback = $info['default access callback'];
+    return $default_callback($op, $entity, $account, $entity_type);
+  }
+
+  return TRUE;
 }
 
 /**
