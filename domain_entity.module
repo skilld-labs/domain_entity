@@ -671,16 +671,16 @@ function domain_entity_field_data_property_info($name = NULL) {
  * Implements hook_commerce_product_reference_default_delta_alter().
  */
 function domain_entity_commerce_product_reference_default_delta_alter(&$delta, $products) {
- $allowed_entity_types = domain_entity_allowed_entity_types();
- if (!in_array('commerce_product', array_keys($allowed_entity_types))) {
-  return;
- }
- foreach ($products as $new_delta => $product) {
-  if (!empty($product)) {
-   $delta = $new_delta;
-   return;
+  $allowed_entity_types = domain_entity_allowed_entity_types();
+  if (!in_array('commerce_product', array_keys($allowed_entity_types))) {
+    return;
   }
- }
+  foreach ($products as $new_delta => $product) {
+    if (!empty($product)) {
+      $delta = $new_delta;
+      return;
+    }
+  }
 }
 
 /**
@@ -855,9 +855,9 @@ function _domain_entity_update_entity_defaut_value_finished($finished, $results)
  *   The type of the entity that hold the field.
  */
 function domain_entity_get_entity_field_name($entity_type) {
- $field_name = 'domain_' . $entity_type;
- if (strlen($field_name) > 21) {
-  $field_name = substr('domain_' . md5($field_name), 0, -7);
- }
- return $field_name;
+  $field_name = 'domain_' . $entity_type;
+  if (strlen($field_name) > 21) {
+    $field_name = substr('domain_' . md5($field_name), 0, -7);
+  }
+  return $field_name;
 }

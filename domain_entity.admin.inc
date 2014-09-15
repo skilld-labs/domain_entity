@@ -136,7 +136,7 @@ function domain_entity_ui($form, &$form_state) {
         $query->entityCondition('entity_type', $entity_name);
         if ($query->execute()) {
           $form['entities'][$entity_name][$entity_name . '_value']['#description']
-           = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
+            = '<div id="edit-changed" class="view-changed messages warning form-wrapper">' .
            t('* Beware you have entities of this type in your database, all unassigned entities will be assigned to the choosen default domain value(s), if you select "current domain" the unassigned entities will be assigned to the current domain. You can change the default value afterway without altering the existing entities domain value(s).') .
            '</div>';
         }
@@ -236,13 +236,13 @@ function domain_entity_ui_submit($form, &$form_state) {
         $domain_entity_allowed_entity_types[$entity_name][$bundle_name] = array($values[$entity_name . '_' . $bundle_name . '_behavior'] => $default_values);
         if (in_array($entity_name, array_keys($old_domain_entity_allowed_entity_types))) {
           foreach ($domain_entity_allowed_entity_types[$entity_name] as $bundle_name => $bundle_info) {
-           if (isset($old_domain_entity_allowed_entity_types[$entity_name][$bundle_name]) &&
-          	    key($bundle_info) != key($old_domain_entity_allowed_entity_types[$entity_name][$bundle_name])) {
+            if (isset($old_domain_entity_allowed_entity_types[$entity_name][$bundle_name]) &&
+              key($bundle_info) != key($old_domain_entity_allowed_entity_types[$entity_name][$bundle_name])) {
               $field_name = domain_entity_get_entity_field_name($entity_name);
               $instance = field_read_instance($entity_name, $field_name, $bundle_name);
               $instance['widget']['type'] = key($bundle_info);
               field_update_instance($instance);
-          	}
+            }
           }
         }
       }
