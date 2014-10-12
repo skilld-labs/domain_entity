@@ -50,7 +50,7 @@
  * see domain_entity_types_enable_domain_field($entity_types).
  *
  * @param array $allowed_entity_types
- *   The domain entity settings array.
+ *   (alterable) The domain entity settings array.
  */
 function hook_domain_entity_allowed_entity_types_alter(&$allowed_entity_types) {
   if (isset($allowed_entity_types['commerce_order'])
@@ -59,4 +59,20 @@ function hook_domain_entity_allowed_entity_types_alter(&$allowed_entity_types) {
     // the path all/my/commerce_order.
     unset($allowed_entity_types['commerce_order']);
   }
+}
+
+/**
+ * Called when the field widget is submit for saving and
+ * domain entity form validate function manipulate the items before saving.
+ *
+ * @param array $items
+ *   (alterable) The domain field value that is gonna be saved.
+ * @param $form_state
+ *   The form state of the form that hold the field domain_entity.
+ * @param $form
+ *   The form that hold the field domain_entity.
+ */
+function hook_domain_entity_widget_multiple_values_form_validate_alter(&$items, $form_state, $form) {
+  $domain_entity_field_name = $form_state['domain_entity_field_name'];
+  $form_field_values = isset($form_state['values'][$form_state['domain_entity_field_name']]) ? $form_state['values'][$form_state['domain_entity_field_name']] : NULL;
 }

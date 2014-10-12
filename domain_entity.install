@@ -18,6 +18,13 @@ function domain_entity_field_schema($field) {
           'not null' => TRUE,
           'default' => 1,
         ),
+        'domain_source' => array(
+          'type' => 'int',
+          'size' => 'tiny',
+          'not null' => FALSE,
+          'default' => 0,
+          'description' => 'A boolean indicating whether this domain_id is the canonical domain'
+        ),
       ),
       'indexes' => array(
         'domain_id' => array('domain_id'),
@@ -31,7 +38,7 @@ function domain_entity_field_schema($field) {
  *
  * For user that used this module before he has a stable version.
  *
- * Migrate to DOMAIN_ALL and  DOMAIN_ACTIVE constants.
+ * Migrate to DOMAIN_ALL and DOMAIN_ACTIVE constants.
  */
 function domain_entity_update_7000() {
   $allowed_entity = variable_get('domain_entity_allowed_entity_types', array());
@@ -49,6 +56,33 @@ function domain_entity_update_7000() {
   variable_set('domain_entity_allowed_entity_types', $allowed_entity);
 }
 
+/**
+ * Implements hook_update_N().
+ *
+ * Add support for domain source. Add a column domain_source to the field domain.
+ */
+function domain_entity_update_7005() {
+  $fields = field_info_fields();
+  foreach ($fields as $field_name => $field) {
+    if ($field['type'] == 'domain_entity' && $field['storage']['type'] == 'field_sql_storage') {
+      $schema =  array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => FALSE,
+        'default' => 0,
+        'description' => 'A boolean indicating whether this domain_id is the canonical domain'
+      );
+      foreach ($field['storage']['details']['sql'] as $type => $table_info) {
+        foreach ($table_info as $table_name => $columns) {
+          $column_name = _field_sql_storage_columnname($field_name, 'domain_source');
+          db_add_field($table_name, $column_name, $schema);
+          db_add_index($table_name, $column_name, array($column_name));
+        }
+      }
+    }
+  }
+  field_cache_clear();
+}
 
 /**
  * Implements hook_uninstall().

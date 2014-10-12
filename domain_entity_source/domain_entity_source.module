@@ -1,0 +1,101 @@
+<?php
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function domain_entity_source_field_widget_form_alter(&$element, $form_state, $context) {
+  if ($context['field']['type'] == 'domain_entity' && !empty($element['domain_id'])) {
+    $items = isset($context['items']) ? $context['items'] : array();
+    // Set the domain default value if no value has been set :
+    $default_value = 0;
+    if (isset($items[0]) && !empty($items[0]) && isset($items[0]['domain_id'])) {
+      foreach ($items as $delta => $item) {
+        if (isset($item['domain_source']) && $item['domain_source']) {
+          $default_value = $item['domain_id'];
+        }
+      }
+    }
+
+    // Get the accessible domains option.
+    $options = $element['domain_id']['#options'];
+    foreach ($element['domain_id'] as $key => $option) {
+    	if (strpos($key, '#') === 0) {
+    		continue;
+    	}
+    	if ($key <> 0 && !empty($option['#disabled'])) {
+    	  unset($options[$key]);
+    	}
+    }
+
+    $element['domain_source'] = array(
+    	'#title' => t('Domain source'),
+      '#description' => t('Select the canonical domain'),
+    	'#type' => 'select',
+      '#options' => $options,
+      '#default_value' => $default_value,
+    );
+
+    $element['domain_source']['#options'][0] = t('No canonical domain.');
+  }
+}
+
+/**
+ * Implements hook_domain_entity_widget_multiple_values_form_validate_alter().
+ */
+function domain_entity_source_domain_entity_widget_multiple_values_form_validate_alter(&$items, &$form_state, $form) {
+	if (!empty($form_state['values'][$form_state['domain_entity_field_name']]) &&
+      !empty($form_state['values'][$form_state['domain_entity_field_name']][LANGUAGE_NONE]) &&
+      !empty($form_state['values'][$form_state['domain_entity_field_name']][LANGUAGE_NONE]['domain_source'])) {
+	  $domain_source = $form_state['values'][$form_state['domain_entity_field_name']][LANGUAGE_NONE]['domain_source'];
+
+	  $domain_source_isset = FALSE;
+	  foreach ($items as $key => $item) {
+	  	if ($item['domain_id'] == $domain_source) {
+	  		$domain_source_isset = TRUE;
+	  		$items[$key]['domain_source'] = TRUE;
+	  	}
+	  }
+
+	  if (!$domain_source_isset) {
+	  	$items[] = array(
+	  		'domain_id' => $domain_source,
+	  	  'domain_source' => TRUE,
+	  	);
+	  }
+	}
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function domain_entity_source_views_api() {
+  list($module, $api) = func_get_args();
+  if ($module == "views" && $api == "views_default") {
+    return array("version" => 3.0);
+  }
+}
+
+/**
+ * Implements hook_views_data_alter().
+ */
+function domain_entity_source_views_data_alter(&$data) {
+  if (module_exists('domain_views')) {
+    $entity_base_tables = domain_entity_allowed_entity_types_base_tables();
+    if (empty($entity_base_tables)) {
+      return;
+    }
+    foreach ($entity_base_tables as $entity_base_table => $entity_infos) {
+      $field_instance = domain_entity_entity_field_instance($entity_infos['entity type']);
+      $help = t("This field contains the domain source of the !entity_type.", array('!entity_type' => $entity_infos['entity type']));
+      $title = t('Domain source (domain entity)');
+
+      // Domain id filtering.
+      $data['field_data_' . $field_instance['name']][$field_instance['name'] . '_domain_source']['filter']['handler'] = 'domain_entity_views_handler_filter_domain_domain_source';
+      $data['field_data_' . $field_instance['name']][$field_instance['name'] . '_domain_source']['title'] = $title;
+      $data['field_data_' . $field_instance['name']][$field_instance['name'] . '_domain_source']['help'] .= $help;
+
+      $data['field_revision_' . $field_instance['name']][$field_instance['name'] . '_domain_source']['filter']['handler'] = 'domain_entity_views_handler_filter_domain_domain_source';
+      $data['field_revision_' . $field_instance['name']][$field_instance['name'] . '_domain_source']['title'] = $title;
+    }
+  }
+}
