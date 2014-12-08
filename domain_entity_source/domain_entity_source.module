@@ -19,18 +19,18 @@ function domain_entity_source_field_widget_form_alter(&$element, $form_state, $c
     // Get the accessible domains option.
     $options = $element['domain_id']['#options'];
     foreach ($element['domain_id'] as $key => $option) {
-    	if (strpos($key, '#') === 0) {
-    		continue;
-    	}
-    	if ($key <> 0 && !empty($option['#disabled'])) {
-    	  unset($options[$key]);
-    	}
+      if (strpos($key, '#') === 0) {
+        continue;
+      }
+      if ($key <> 0 && !empty($option['#disabled'])) {
+        unset($options[$key]);
+      }
     }
 
     $element['domain_source'] = array(
-    	'#title' => t('Domain source'),
+      '#title' => t('Domain source'),
       '#description' => t('Select the canonical domain'),
-    	'#type' => 'select',
+      '#type' => 'select',
       '#options' => $options,
       '#default_value' => $default_value,
     );
@@ -42,27 +42,27 @@ function domain_entity_source_field_widget_form_alter(&$element, $form_state, $c
 /**
  * Implements hook_domain_entity_widget_multiple_values_form_validate_alter().
  */
-function domain_entity_source_domain_entity_widget_multiple_values_form_validate_alter(&$items, &$form_state, $form) {
-	if (!empty($form_state['values'][$form_state['domain_entity_field_name']]) &&
-      !empty($form_state['values'][$form_state['domain_entity_field_name']][LANGUAGE_NONE]) &&
-      !empty($form_state['values'][$form_state['domain_entity_field_name']][LANGUAGE_NONE]['domain_source'])) {
-	  $domain_source = $form_state['values'][$form_state['domain_entity_field_name']][LANGUAGE_NONE]['domain_source'];
+function domain_entity_source_domain_entity_widget_multiple_values_form_validate_alter(&$items, &$form_state, $form, $element) {
+  $parents = $element['#array_parents'];
+  array_pop($parents);
+  $values = drupal_array_get_nested_value($form_state['values'], $parents);
+  if (!empty($values['domain_source'])) {
+    $domain_source = $values['domain_source'];
+    $domain_source_isset = FALSE;
+    foreach ($items as $key => $item) {
+      if ($item['domain_id'] == $domain_source) {
+        $domain_source_isset = TRUE;
+        $items[$key]['domain_source'] = TRUE;
+      }
+    }
 
-	  $domain_source_isset = FALSE;
-	  foreach ($items as $key => $item) {
-	  	if ($item['domain_id'] == $domain_source) {
-	  		$domain_source_isset = TRUE;
-	  		$items[$key]['domain_source'] = TRUE;
-	  	}
-	  }
-
-	  if (!$domain_source_isset) {
-	  	$items[] = array(
-	  		'domain_id' => $domain_source,
-	  	  'domain_source' => TRUE,
-	  	);
-	  }
-	}
+    if (!$domain_source_isset) {
+      $items[] = array(
+        'domain_id' => $domain_source,
+        'domain_source' => TRUE,
+      );
+    }
+  }
 }
 
 /**
