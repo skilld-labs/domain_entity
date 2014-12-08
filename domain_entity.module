@@ -781,20 +781,38 @@ function domain_entity_types_enable_domain_field($entity_types) {
     }
 
     // Query to look at unafilliated entities.
-    $entity_key = $entity_info['entity keys']['id'];
 
+    // EntityFieldQuery excludes entities with empty field values from results
+    // when using fieldCondition(), so we look for the difference between
+    // results for all entities and those that are already affiliated to
+    // domains.
+    $entity_key = $entity_info['entity keys']['id'];
+    // Query for all entities in the type.
     $query = new EntityFieldQuery;
     $query->entityCondition('entity_type', $entity_type);
-    $query->fieldCondition($field_name, 'domain_id', NULL);
-    $unaffiliated_entities = $query->execute();
+    $result = $query->execute();
 
-    if (!empty($unaffiliated_entities[$entity_type])) {
-      $entities_to_update[$entity_type] = array();
-      foreach ($unaffiliated_entities[$entity_type] as $key => $value) {
-        $id = $value->$entity_key;
-        $entities_to_update[$entity_type][] = $id;
-       }
-     }
+    if (!empty($result[$entity_type])) {
+      $all_entities = $result[$entity_type];
+
+      // Query for entities affiliated to domains.
+      $query = new EntityFieldQuery;
+      $query->entityCondition('entity_type', $entity_type);
+      $query->fieldCondition($field_name);
+      $result = $query->execute();
+      $affiliated_entities = empty($result[$entity_type]) ? array() : $result[$entity_type];
+
+      // Find unafilliated entities by taking the differernce.
+      $unaffiliated_entities = array_diff_key($all_entities, $affiliated_entities);
+
+      if (!empty($unaffiliated_entities)) {
+        $entities_to_update[$entity_type] = array();
+        foreach ($unaffiliated_entities as $key => $value) {
+          $id = $value->$entity_key;
+          $entities_to_update[$entity_type][] = $id;
+        }
+      }
+    }
 
   }
   // Clear cache as we are going to update existing entities field values.
