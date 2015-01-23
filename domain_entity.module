@@ -602,14 +602,27 @@ function domain_entity_field_widget_form(&$form, &$form_state, $field, $instance
  * Handle checkboxes to save it as multiple field values (delta).
  */
 function domain_entity_widget_multiple_values_form_validate($element, &$form_state, $form) {
+  global $user;
+  $user_granted_domain_ids = domain_get_user_domains($user);
+
   $entity_type = isset($element['#entity_type']) ? $element['#entity_type'] : FALSE;
   if (!in_array($entity_type, array_keys(domain_entity_allowed_entity_types()))) {
     return;
   }
+  $default_values = $element['#default_value'];
   $values = $element['#value'];
   $active_domain = array();
-  foreach ($values as $domain_id) {
-    $active_domain[] = array('domain_id' => $domain_id);
+  $domains = domain_domains();
+  foreach ($domains as $domain) {
+    if (!in_array($domain['domain_id'], $user_granted_domain_ids) &&
+        in_array($domain['domain_id'], $default_values)) {
+      $active_domain[] = array('domain_id' => $domain['domain_id']);
+
+    }
+    elseif (in_array($domain['domain_id'], $user_granted_domain_ids) &&
+            in_array($domain['domain_id'], $values)) {
+      $active_domain[] = array('domain_id' => $domain['domain_id']);
+    }
   }
   $items = array();
   foreach ($active_domain as $domain) {
