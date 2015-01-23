@@ -258,7 +258,7 @@ function domain_entity_entity_presave($entity, $type) {
     // Populate field instance with the default bundle domain value,
     // if is not already set or unassigned.
     $value = $entity->$field_instance_name;
-    if (empty($value) || !isset($value[LANGUAGE_NONE][0]) || !$value[LANGUAGE_NONE][0]['domain_id']) {
+    if (empty($value[LANGUAGE_NONE]) || !isset($value[LANGUAGE_NONE][0]['domain_id'])) {
       $entity->$field_instance_name = array(
         LANGUAGE_NONE => $values,
       );
