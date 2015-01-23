@@ -64,20 +64,5 @@ class domain_entity_views_handler_filter_domain_domain_id extends views_handler_
         $form_state['input'][$this->real_field] = NULL;
       }
     }
-
-  }
-  /**
-   * Override views_handler_filter_in_operator::query().
-   *
-   * Do not add the condition to the query
-   * if the value is a joker.
-   *
-   * @see views_handler_filter_in_operator::query()
-   */
-  function query() {
-    if (in_array(DOMAIN_ALL, $this->value)) {
-      return;
-    }
-    parent::query();
   }
 }
