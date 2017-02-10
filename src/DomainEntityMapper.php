@@ -141,7 +141,7 @@ class DomainEntityMapper {
       $field = [
         'label' => 'Domain Access',
         // @Todo Add better naming for entities without bundles.
-        'description' => 'Select the affiliate domain(s) for this bundle.',
+        'description' => 'Select the affiliate domain(s). If nothing was selected: Affiliated to all domains.',
         'bundle' => $bundle,
         'required' => FALSE,
         'field_storage' => $field_storage,

@@ -4,7 +4,6 @@
  * @file
  * Enables domain access for entities, and access query alter.
  *
- * @todo Add hook_entity_access().
  * @todo Add hook_entity_presave().
  * @todo Add domain_entity_query_alter().
  * @todo Add batching for field operations.
@@ -19,6 +18,7 @@ use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\domain_entity\DomainEntityMapper;
+use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Implements hook_help().
@@ -426,3 +426,64 @@ function domain_entity_allowed_entity_types() {
 //  \Drupal::config('domain_entity.settings')->clear('bypass_access_conditions_backup')->save();
 //  drupal_set_message(t('%count entities updated.', array('%count' => count($results))));
 //}
+
+/**
+ * Implements hook_entity_access().
+ */
+function domain_entity_entity_access(EntityInterface $entity, $operation, AccountInterface $account) {
+
+  // Restrict access on view field-able entities
+  // with attached domain access field only.
+  if ($operation !== 'view') {
+    return AccessResult::neutral();
+  }
+  if (!($entity instanceof FieldableEntityInterface)) {
+    return AccessResult::neutral();
+  }
+  if (!$entity->hasField(DomainEntityMapper::FIELD_NAME)) {
+    return AccessResult::neutral();
+  }
+
+  $domains = _domain_entity_get_related_domains($entity);
+
+  // If specific domains was not selected means:
+  // Should be accessible for all domains (no restrictions).
+  if (!$domains) {
+    return AccessResult::neutral();
+  }
+
+  $current_domain = domain_entity_get_domain();
+
+  if (isset($domains[$current_domain->id()])) {
+    return AccessResult::neutral();
+  }
+
+  return AccessResult::forbidden()->addCacheableDependency($current_domain);
+}
+
+/**
+ * Return domain IDs list assigned to the requested entity.
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ *   Entity object.
+ *
+ * @return array
+ *   Domain IDs list assigned to the requested entity.
+ */
+function _domain_entity_get_related_domains(EntityInterface $entity) {
+
+  $domains = [];
+  $values = $entity->get(DomainEntityMapper::FIELD_NAME)->getValue();
+
+  if (!$values) {
+    return $domains;
+  }
+
+  foreach ($values as $value) {
+    if (isset($value['target_id'])) {
+      $domains[$value['target_id']] = $value['target_id'];
+    }
+  }
+
+  return $domains;
+}
