@@ -1,0 +1,6 @@
+domain_entity.ui:
+  title: Domain entity
+  route_name: domain_entity.ui
+  parent: domain.admin
+  description: 'Enable or Disable domain on entities / Configure domain entities behavior.'
+  weight: 20

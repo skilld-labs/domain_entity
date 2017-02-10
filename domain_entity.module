@@ -1,0 +1,428 @@
+<?php
+
+/**
+ * @file
+ * Enables domain access for entities, and access query alter.
+ *
+ * @todo Add hook_entity_access().
+ * @todo Add hook_entity_presave().
+ * @todo Add domain_entity_query_alter().
+ * @todo Add batching for field operations.
+ * Check d7 code at https://github.com/skilld-labs/domain_entity/blob/7.x-1.x/domain_entity.module
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\FieldableEntityInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\domain_entity\DomainEntityMapper;
+
+/**
+ * Implements hook_help().
+ */
+function domain_entity_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.domain_entity':
+      $output = '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The Domain Entity module allows users to manage domain fields on site content, assign access permissions for visibility of content.') . '</p>';
+      $output .= '<h3>' . t('Uses') . '</h3>';
+      $output .= '<dl>';
+      $output .= '<dt>' . t('Enabling domain fields on any entity') . '</dt>';
+      $output .= '<dd>' . t('Overview page for all entities') . '</dd>';
+      $output .= '<dt>' . t('Configuring query access') . '</dt>';
+      $output .= '<dd>' . t('Allowing to load entities for all domains') . '</dd>';
+      $output .= '<dt>' . t('Overriding default settings') . '</dt>';
+      $output .= '<dd>' . t('Users with the appropriate permissions can override the default domain settings of an entity type.') . '</dd>';
+      $output .= '</dl>';
+      return $output;
+
+    case 'domain_entity.ui':
+      $output = '<p>' . t('Choose which entities are under Domain Access control, and choose domain entity widget behavior of bundles.') . '</p>';
+      return $output;
+  }
+}
+
+/**
+ * Returns default values for entity reference field with domains.
+ *
+ * @param \Drupal\Core\Entity\FieldableEntityInterface $entity
+ *   The entity that contains field.
+ * @param \Drupal\Core\Field\FieldDefinitionInterface $definition
+ *   The field of the domain entity access.
+ *
+ * @return array
+ *   Domains configured for the field.
+ */
+function domain_entity_field_default_domains(FieldableEntityInterface $entity, FieldDefinitionInterface $definition) {
+  return $definition->getThirdPartySetting('domain_entity', 'domains', []);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for 'field_storage_config_edit_form'.
+ */
+function domain_entity_form_field_storage_config_edit_form_alter(&$form, FormStateInterface $form_state) {
+  /** @var \Drupal\field\Entity\FieldStorageConfig $field_storage */
+  $field_storage = $form_state->getFormObject()->getEntity();
+  if ($field_storage->getName() === DomainEntityMapper::FIELD_NAME) {
+    $form['cardinality_container']['cardinality']['#access'] = FALSE;
+    $form['cardinality_container']['cardinality_number']['#access'] = FALSE;
+    $form['cardinality_container']['#description'] = t('This field widget allow only unlimited values (the number of active domain).');;
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for 'field_config_edit_form'.
+ */
+function domain_entity_form_field_config_edit_form_alter(&$form, FormStateInterface $form_state) {
+  /** @var \Drupal\field\FieldConfigInterface $field */
+  $field = $form_state->getFormObject()->getEntity();
+  if ($field->getName() === DomainEntityMapper::FIELD_NAME) {
+    $form['required']['#disabled'] = TRUE;
+  }
+}
+
+/**
+ * Implements hook_entity_field_access().
+ */
+function domain_entity_entity_field_access($operation, FieldDefinitionInterface $field_definition, AccountInterface $account, FieldItemListInterface $items = NULL) {
+  if ($field_definition->getName() === DomainEntityMapper::FIELD_NAME && $operation == 'edit') {
+    /** @var \Drupal\field\Entity\FieldConfig $field_definition */
+    $behavior = $field_definition->getThirdPartySetting('domain_entity', 'behavior', DomainEntityMapper::BEHAVIOR_AUTO);
+    $access = AccessResult::allowedIfHasPermission($account, 'set domain access status for all entities');
+    $access = $access->orIf(AccessResult::allowedIf($behavior == DomainEntityMapper::BEHAVIOR_USER));
+    $access->addCacheableDependency($field_definition);
+    // @todo Add remaining conditions.
+    return $access;
+  }
+  return AccessResult::neutral();
+}
+
+/**
+ * Returns the currently active domain.
+ *
+ * @return \Drupal\domain\DomainInterface
+ *   The currently active domain.
+ */
+function domain_entity_get_domain() {
+  return \Drupal::service('domain.negotiator')->getActiveDomain();
+}
+
+/**
+ * Returns the list domains for user.
+ *
+ * @param \Drupal\Core\Session\AccountInterface $account
+ *    Drupal user account.
+ *
+ * @return \Drupal\domain\DomainInterface[]
+ *   List of domains.
+ */
+function domain_entity_get_user_domains(AccountInterface $account = NULL) {
+  if (!isset($account)) {
+    $account = \Drupal::currentUser();
+  }
+  $user = User::load($account->id());
+
+  $user_domains = \Drupal::service('domain.element_manager')
+    ->getFieldValues($user, DOMAIN_ADMIN_FIELD);
+  return $user_domains;
+}
+
+/**
+ * Return a list of domain id's, accessible by the current user.
+ *
+ * @param \Drupal\Core\Session\AccountInterface $account
+ *   Drupal user account.
+ *
+ * @return array
+ *   List of domain id's.
+ */
+function domain_entity_get_user_available_domains(AccountInterface $account = NULL) {
+  if (!isset($account)) {
+    $account = \Drupal::currentUser();
+  }
+
+  // Get the current user list of granted domain id:
+  // the current domain id OR for middle-office editors:
+  // the list of assigned domain(s) id.
+  $current_domain = domain_entity_get_domain();
+  // @todo Make sure that getDomainId() is what expected.
+  $accessible_domain_ids = [$current_domain->getDomainId()];
+
+  // Middle office editors with permission see in administration,
+  // entity from her lists of assigned domains.
+  $route = \Drupal::routeMatch()->getRouteObject();
+  $is_admin = \Drupal::service('router.admin_context')->isAdminRoute($route);
+
+  if ($is_admin && $account->hasPermission('access entities affiliate on assigned domains')) {
+    $user_domain = domain_entity_get_user_domains($account);
+    $accessible_domain_ids = !empty($user_domain) ? $user_domain : $accessible_domain_ids;
+  }
+
+  return $accessible_domain_ids;
+}
+
+/**
+ * Returns the list of the domain_entity allowed entity types.
+ *
+ * @return array
+ *   List of entity types. This array is structured as follow:
+ *   array(
+ *     entity_type => array(
+ *       bundle => array(
+ *         widget_behaviour => array(
+ *           default_value => default_value,
+ *         ),
+ *       ),
+ *       other bundle => etc..
+ *     ),
+ *     other entity => etc..
+ *   );
+ *
+ *   Example :
+ *   array(
+ *     'commerce_order' => array(
+ *       'commerce_order' => array(
+ *         DOMAIN_ENTITY_BEHAVIOR_USER => array(
+ *           DOMAIN_ACTIVE => DOMAIN_ACTIVE
+ *         ),
+ *       ),
+ *     ),
+ *   );
+ */
+function domain_entity_allowed_entity_types() {
+  /** @var \Drupal\domain_entity\DomainEntityMapper $mapper */
+  $mapper = \Drupal::service('domain_entity.mapper');
+  return $mapper->getEnabledEntityTypes();
+}
+
+// @codingStandardsIgnoreStart
+/**
+ * Implements hook_query_alter().
+ *
+ * Alter the enabled entities select query,
+ * add domain access conditions.
+ */
+//function domain_entity_query_alter(&$query) {
+//  if (!\Drupal::config('domain_entity.settings')->get('bypass_access_conditions') && method_exists($query, 'getTables')) {
+//    $tables = $query->getTables();
+//    $base_table_alias = key($tables);
+//    $base_table = $tables[$base_table_alias]['table'];
+//
+//    // Have we to check access for this entity types.
+//    $domain_entity_bases_table = domain_entity_allowed_entity_types_base_tables();
+//    if (!in_array($base_table, array_keys($domain_entity_bases_table))) {
+//      return;
+//    }
+//
+//    // This is an enabled domain entity,
+//    // prepare our custom access conditions.
+//    // Get the accessible domain id's by the current user, in the current path.
+//    $accessible_domain_ids = domain_entity_get_user_available_domains();
+//    // Show to all user the entities that are assigned to all domains,
+//    // add the joker domain entity value to the list of the domain id's.
+//    $accessible_domain_ids[] = DOMAIN_ENTITY_SEND_TO_ALL;
+//    // Get the entity_type and key for this base_table:
+//    $entity_type = $domain_entity_bases_table[$base_table]['entity type'];
+//    $entity_key = $domain_entity_bases_table[$base_table]['entity key'];
+//    // Get the field name for this entity:
+//    $field_instance = domain_entity_entity_field_instance($entity_type);
+//    $field_instance_name = $field_instance['name'];
+//
+//    // Add our subquery condition:
+//    $domain_query = db_select('field_data_' . $field_instance_name, 'dom');
+//    $domain_query->where('dom.entity_id = ' . $base_table_alias . '.' . $entity_key);
+//    $domain_query->condition('dom.' . $field_instance_name . '_domain_id', $accessible_domain_ids, 'IN');
+//    $domain_query->fields('dom', array($field_instance_name . '_domain_id'));
+//    $query->exists($domain_query);
+//  }
+//}
+
+/**
+ * Implements hook_entity_presave().
+ */
+//function domain_entity_entity_presave($entity, $type) {
+//  // Check if it's an allowed entity types:
+//  $allowed_entity_types = domain_entity_allowed_entity_types();
+//  if (!in_array($type, array_keys($allowed_entity_types))) {
+//    return;
+//  }
+//  // Get domain_entity field type instances:
+//  if ($field_instance = domain_entity_entity_field_instance($type)) {
+//    $field_instance_name = $field_instance['name'];
+//  }
+//  else {
+//    return FALSE;
+//  }
+//
+//  // Get current domain:
+//  $current_domain = domain_entity_get_domain();   // @fixme current = active domain
+//  $entity_info = \Drupal::entityManager()->getDefinition($type);
+//  // Get default bundle value
+//  // e.g (all, current_domain, list(domain_id))
+//  $bundle_key = $entity_info['entity keys']['bundle'];
+//
+//  if (isset($allowed_entity_types[$type][$entity->$bundle_key])) {
+//    $default_values = reset($allowed_entity_types[$type][$entity->$bundle_key]);
+//  }
+//  else {
+//    $default_values = array();
+//  }
+//  if (in_array(DOMAIN_ALL, $default_values)) {
+//    $values = array();
+//    $values[] = array(
+//      'domain_id' => DOMAIN_ENTITY_SEND_TO_ALL,
+//    );
+//  }
+//  elseif (in_array(DOMAIN_ACTIVE, $default_values)) {
+//    $values = array(
+//      0 => array(
+//        'domain_id' => $current_domain['domain_id'],
+//      ),
+//    );
+//  }
+//  else {
+//    $values = array();
+//    foreach ($default_values as $did) {
+//      $values[] = array(
+//        'domain_id' => $did,
+//      );
+//    }
+//  }
+//  // Ensure this entities have almost a default value.
+//  // Attach it to current domain if the entity is created,
+//  // by bypassing entity creation form,
+//  // do not let an unset domain entity saved,
+//  // (or the entity became inaccessible everywhere).
+//  if (!isset($entity->$field_instance_name)) {
+//    // Populate field instance with the default bundle domain value,
+//    // if is not already set or unassigned.
+//    $entity->$field_instance_name = array(
+//      \Drupal\Core\Language\Language::LANGCODE_NOT_SPECIFIED => $values,
+//    );
+//  }
+//  else {
+//    // Populate field instance with the default bundle domain value,
+//    // if is not already set or unassigned.
+//    $value = $entity->$field_instance_name;
+//    if (empty($value) || !isset($value[\Drupal\Core\Language\Language::LANGCODE_NOT_SPECIFIED][0]) || !$value[\Drupal\Core\Language\Language::LANGCODE_NOT_SPECIFIED][0]['domain_id']) {
+//      $entity->$field_instance_name = array(
+//        \Drupal\Core\Language\Language::LANGCODE_NOT_SPECIFIED => $values,
+//      );
+//    }
+//  }
+//  return $entity;
+//}
+
+/**
+ * Helper function to active domain field on bundles of entity types.
+ *
+ * @param array $entity_types
+ *   List of Entity types, that list her bundles.
+ */
+//function domain_entity_types_enable_domain_field($entity_types) {
+//  // Common settings.
+//  $field_type = 'domain_entity';
+//  $label = t('Domain');
+//  $required = TRUE;
+//  $entities_to_update = array();
+//  // Reset the entity info, before enabling domain access on entity.
+//  // Some entities are not fieldable, but this module force it to.
+//  \Drupal::entityManager()->clearCachedDefinitions();
+//  // Create fields instance.
+//  foreach ($entity_types as $entity_type => $bundles) {
+//    $field_name = domain_entity_get_entity_field_name($entity_type);
+//    $entity_info = \Drupal::entityManager()->getDefinition($entity_type);
+//
+//    foreach ($bundles as $bundle => $widget) {
+//      // Look for or add the specified field to the requested entity bundle.
+//      $instance = field_info_instance($entity_type, $field_name, $bundle);
+//      if (empty($instance)) {
+//        domain_entity_create_field_instance($field_name, $field_type, $required, $entity_type, $bundle, $label, key($widget));
+//        drupal_set_message(t("Domain Access behaviour '@widget' has been enabled on the bundle @type of @entity entity type", array(
+//        '@widget' => key($widget),
+//        '@type' => $bundle,
+//        '@entity' => $entity_type,
+//        )));
+//      }
+//    }
+//
+//    // Query to look at unafilliated entities.
+//    $entity_key = $entity_info['entity keys']['id'];
+//
+//    $query = new EntityFieldQuery;
+//    $query->entityCondition('entity_type', $entity_type);
+//    $query->fieldCondition($field_name, 'domain_id', NULL);
+//    $unaffiliated_entities = $query->execute();
+//
+//    if (!empty($unaffiliated_entities[$entity_type])) {
+//      $entities_to_update[$entity_type] = array();
+//      foreach ($unaffiliated_entities[$entity_type] as $key => $value) {
+//        $id = $value->$entity_key;
+//        $entities_to_update[$entity_type][] = $id;
+//       }
+//     }
+//
+//  }
+//  // Clear cache as we are going to update existing entities field values.
+//  \Drupal::entityManager()->clearCachedFieldDefinitions();
+//
+//  // Create a batch operation to update entities that are not affiliated to a domain.
+//  $operations = array();
+//  foreach ($entities_to_update as $entity_type => $entities) {
+//    foreach ($entities as $entity_id) {
+//      $operations[] = array('_domain_entity_update_entity_defaut_value', array(
+//          $entity_type,
+//          $entity_id,
+//        ));
+//    }
+//  }
+//  $batch = array(
+//    'operations' => $operations,
+//    'title' => t('Update existing entities domain affiliation default values'),
+//    'error_message' => t('The domain access update has encountered an error.'),
+//    'finished' => '_domain_entity_update_entity_defaut_value_finished',
+//  );
+//  if (count($operations)) {
+//// Bypass access restriction to allow the current user,
+//// to access the entity that are not already assigned.
+//// @FIXME - dome, need checking
+//// Could not extract the default value because it is either indeterminate, or
+//// not scalar. You'll need to provide a default value in
+//// config/install/domain_entity.settings.yml and config/schema/domain_entity.schema.yml.
+//$domain_entity_allowed_entity_types_backup = \Drupal::config('domain_entity.settings')->get('allowed_entity_types');
+//    \Drupal::configFactory()->getEditable('domain_entity.settings')->set('bypass_access_conditions_backup', \Drupal::config('domain_entity.settings')->get('bypass_access_conditions'))->save();
+//    \Drupal::configFactory()->getEditable('domain_entity.settings')->set('bypass_access_conditions', TRUE)->save();
+//    batch_set($batch);
+//  }
+//  else {
+//    drupal_set_message(t('0 entities updated.'));
+//  }
+//}
+
+/**
+ * Batch operation processing callback.
+ */
+//function _domain_entity_update_entity_defaut_value($entity_type, $entity_id, &$context) {
+//  $entity = entity_load_single($entity_type, $entity_id);
+//  if ($entity) {
+//    // Just call entity_save(), the hook domain_entity_entity_presave()
+//    // take care of the field domain default assignation(s), if nothing is set.
+//    $entity->save();
+//    $context['results'][] = $entity_type . ' - Id : ' . $entity_id . ' updated.';
+//    $context['message'] = t('Updated: %entity_type - ID : %entity_id.', array('%entity_type' => $entity_type, '%entity_id' => $entity_id));
+//  }
+//
+//}
+
+/**
+ * Batch operation finished callback.
+ */
+//function _domain_entity_update_entity_defaut_value_finished($finished, $results) {
+//  // Restore entity type domain access.
+//  \Drupal::configFactory()->getEditable('domain_entity.settings')->set('bypass_access_conditions', \Drupal::config('domain_entity.settings')->get('bypass_access_conditions_backup'))->save();
+//  \Drupal::config('domain_entity.settings')->clear('bypass_access_conditions_backup')->save();
+//  drupal_set_message(t('%count entities updated.', array('%count' => count($results))));
+//}

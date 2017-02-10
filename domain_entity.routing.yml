@@ -1,0 +1,15 @@
+domain_entity.ui:
+  path: '/admin/config/domain/entities'
+  defaults:
+    _title: 'Entities'
+    _form: '\Drupal\domain_entity\Form\DomainEntityUi'
+  requirements:
+    _permission: 'administer domains'
+domain_entity.settings:
+  path: '/admin/config/domain/entities/{entity_type_id}'
+  defaults:
+    _title: 'Settings'
+    _title_callback: '\Drupal\domain_entity\Form\DomainEntitySettings::getTitle'
+    _form: '\Drupal\domain_entity\Form\DomainEntitySettings'
+  requirements:
+    _custom_access: '\Drupal\domain_entity\Form\DomainEntitySettings::getFormAccess'

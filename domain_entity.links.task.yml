@@ -1,0 +1,5 @@
+domain_entity.ui:
+  title: Entities
+  weight: -5
+  route_name: domain_entity.ui
+  base_route: domain.admin

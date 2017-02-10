@@ -1,0 +1,17 @@
+domain_entity.settings:
+  type: mapping
+  label: Settings
+  mapping:
+    bypass_access_conditions:
+      type: boolean
+
+field.field.*.third_party.domain_entity:
+  type: mapping
+  label: Domain entity settings
+  mapping:
+    domains:
+      type: sequence
+      label: 'Domain languages'
+    behavior:
+      type: string
+      label: Field behavior

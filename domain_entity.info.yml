@@ -1,0 +1,8 @@
+name: Domain Access Entity
+description: 'Defines Domain access for entities'
+package: Domain
+type: module
+core: 8.x
+configure: domain_entity.ui
+dependencies:
+  - domain

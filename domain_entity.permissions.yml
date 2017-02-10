@@ -1,0 +1,8 @@
+access entities affiliate on assigned domains:
+  title: 'Access and filter entities affiliate on user''s assigned domains'
+  description: 'Allow an editor of multiple domains to access entities on different domain.'
+  'restrict access': true
+set domain access status for all entities:
+  title: 'Set domain access status for all entities'
+  description: 'Allow editor to edit & set domain access for all entities type.'
+  'restrict access': true
