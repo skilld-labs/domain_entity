@@ -11,14 +11,17 @@
  */
 
 use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Database\Query\AlterableInterface;
+use Drupal\Core\Database\Query\Condition;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
-use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\domain_entity\DomainEntityMapper;
-use Drupal\Core\Entity\EntityInterface;
+use Drupal\user\Entity\User;
 
 /**
  * Implements hook_help().
@@ -125,8 +128,10 @@ function domain_entity_get_user_domains(AccountInterface $account = NULL) {
   }
   $user = User::load($account->id());
 
-  $user_domains = \Drupal::service('domain.element_manager')
-    ->getFieldValues($user, DOMAIN_ADMIN_FIELD);
+  $user_domains = [];
+  foreach ($user->get(DOMAIN_ADMIN_FIELD) as $item) {
+    $user_domains[] = $item->entity->id();
+  }
   return $user_domains;
 }
 
@@ -148,8 +153,7 @@ function domain_entity_get_user_available_domains(AccountInterface $account = NU
   // the current domain id OR for middle-office editors:
   // the list of assigned domain(s) id.
   $current_domain = domain_entity_get_domain();
-  // @todo Make sure that getDomainId() is what expected.
-  $accessible_domain_ids = [$current_domain->getDomainId()];
+  $accessible_domain_ids = [$current_domain->id()];
 
   // Middle office editors with permission see in administration,
   // entity from her lists of assigned domains.
@@ -167,30 +171,8 @@ function domain_entity_get_user_available_domains(AccountInterface $account = NU
 /**
  * Returns the list of the domain_entity allowed entity types.
  *
- * @return array
- *   List of entity types. This array is structured as follow:
- *   array(
- *     entity_type => array(
- *       bundle => array(
- *         widget_behaviour => array(
- *           default_value => default_value,
- *         ),
- *       ),
- *       other bundle => etc..
- *     ),
- *     other entity => etc..
- *   );
- *
- *   Example :
- *   array(
- *     'commerce_order' => array(
- *       'commerce_order' => array(
- *         DOMAIN_ENTITY_BEHAVIOR_USER => array(
- *           DOMAIN_ACTIVE => DOMAIN_ACTIVE
- *         ),
- *       ),
- *     ),
- *   );
+ * @return \Drupal\Core\Entity\EntityTypeInterface[]
+ *   Keyed array of enabled entity types.
  */
 function domain_entity_allowed_entity_types() {
   /** @var \Drupal\domain_entity\DomainEntityMapper $mapper */
@@ -198,48 +180,51 @@ function domain_entity_allowed_entity_types() {
   return $mapper->getEnabledEntityTypes();
 }
 
-// @codingStandardsIgnoreStart
 /**
  * Implements hook_query_alter().
  *
- * Alter the enabled entities select query,
- * add domain access conditions.
+ * Alter the enabled entities select query, add domain access conditions.
  */
-//function domain_entity_query_alter(&$query) {
-//  if (!\Drupal::config('domain_entity.settings')->get('bypass_access_conditions') && method_exists($query, 'getTables')) {
-//    $tables = $query->getTables();
-//    $base_table_alias = key($tables);
-//    $base_table = $tables[$base_table_alias]['table'];
-//
-//    // Have we to check access for this entity types.
-//    $domain_entity_bases_table = domain_entity_allowed_entity_types_base_tables();
-//    if (!in_array($base_table, array_keys($domain_entity_bases_table))) {
-//      return;
-//    }
-//
-//    // This is an enabled domain entity,
-//    // prepare our custom access conditions.
-//    // Get the accessible domain id's by the current user, in the current path.
-//    $accessible_domain_ids = domain_entity_get_user_available_domains();
-//    // Show to all user the entities that are assigned to all domains,
-//    // add the joker domain entity value to the list of the domain id's.
-//    $accessible_domain_ids[] = DOMAIN_ENTITY_SEND_TO_ALL;
-//    // Get the entity_type and key for this base_table:
-//    $entity_type = $domain_entity_bases_table[$base_table]['entity type'];
-//    $entity_key = $domain_entity_bases_table[$base_table]['entity key'];
-//    // Get the field name for this entity:
-//    $field_instance = domain_entity_entity_field_instance($entity_type);
-//    $field_instance_name = $field_instance['name'];
-//
-//    // Add our subquery condition:
-//    $domain_query = db_select('field_data_' . $field_instance_name, 'dom');
-//    $domain_query->where('dom.entity_id = ' . $base_table_alias . '.' . $entity_key);
-//    $domain_query->condition('dom.' . $field_instance_name . '_domain_id', $accessible_domain_ids, 'IN');
-//    $domain_query->fields('dom', array($field_instance_name . '_domain_id'));
-//    $query->exists($domain_query);
-//  }
-//}
+function domain_entity_query_alter(AlterableInterface $query) {
+  if (!\Drupal::config('domain_entity.settings')->get('bypass_access_conditions') && method_exists($query, 'getTables')) {
+    // Have we to check access for this entity types.
+    $allowed_types = domain_entity_allowed_entity_types();
+    $entity_type_id = $query->getMetaData('entity_type');
+    if (!isset($allowed_types[$entity_type_id])) {
+      return;
+    }
+    // Get primary key of base table from entity type definition.
+    $entity_key = $allowed_types[$entity_type_id]->getKey('id');
 
+    // Get the accessible domain id's by the current user, in the current path.
+    $accessible_domain_ids = domain_entity_get_user_available_domains();
+
+    $tables = $query->getTables();
+    $base_table_alias = key($tables);
+
+    $field_name = DomainEntityMapper::FIELD_NAME;
+
+    // This is an enabled domain entity,
+    // prepare our custom access conditions.
+    $domain_query = \Drupal::database()
+      ->select($entity_type_id . '__' . $field_name, 'dom');
+    $domain_query->where('dom.entity_id = ' . $base_table_alias . '.' . $entity_key);
+    $domain_query->addExpression('1');
+
+    // No domain restrictions found.
+    $condition = new Condition('OR');
+    $condition->notExists($domain_query);
+
+    // Or restrictions contains allowed domains.
+    $domain_query = clone $domain_query;
+    $domain_query->condition('dom.' . $field_name . '_target_id', $accessible_domain_ids, 'IN');
+    $condition->exists($domain_query);
+
+    $query->condition($condition);
+  }
+}
+
+// @codingStandardsIgnoreStart
 /**
  * Implements hook_entity_presave().
  */
