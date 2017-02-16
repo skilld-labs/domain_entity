@@ -52,7 +52,7 @@ class DomainEntityMapper {
    * Returns entity types that have domain access field storage.
    *
    * @return \Drupal\Core\Entity\EntityTypeInterface[]
-   *   The fieldable entity types.
+   *   Keyed array of enabled entity types.
    */
   public function getEnabledEntityTypes() {
     $result = [];
