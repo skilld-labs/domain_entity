@@ -153,15 +153,20 @@ class DomainEntityMapper {
       $field->save();
 
       // Assign widget settings for the 'default' form mode.
-      entity_get_form_display($entity_type, $bundle, 'default')
-        ->setComponent(self::FIELD_NAME, [
+      $entity_form_display = $this->entityTypeManager->getStorage('entity_form_display')->load($entity_type . '.' . $bundle . '.default');
+      if ($entity_form_display) {
+        /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface $entity_form_display */
+        $entity_form_display->setComponent(self::FIELD_NAME, [
           'type' => 'options_buttons',
         ])->save();
+      }
 
       // Assign display settings for the 'default' view mode.
-      entity_get_display($entity_type, $bundle, 'default')
-        ->removeComponent(self::FIELD_NAME)
-        ->save();
+      $entity_view_display = $this->entityTypeManager->getStorage('entity_view_display')->load($entity_type . '.' . $bundle . '.default');
+      if ($entity_view_display) {
+        /** @var \Drupal\Core\Entity\Display\EntityViewDisplayInterface $entity_view_display */
+        $entity_view_display->removeComponent(self::FIELD_NAME)->save();
+      }
     }
   }
 
