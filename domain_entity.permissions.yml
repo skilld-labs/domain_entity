@@ -6,3 +6,7 @@ set domain access status for all entities:
   title: 'Set domain access status for all entities'
   description: 'Allow editor to edit & set domain access for all entities type.'
   'restrict access': true
+view all domain entities everywhere:
+  title: 'View all entities on any domain without per domain access restriction'
+  description: 'Skip domain assignation access check on entity view (allow translation of any entity)'
+  'restrict access': true

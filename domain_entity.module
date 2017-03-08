@@ -426,6 +426,9 @@ function domain_entity_entity_access(EntityInterface $entity, $operation, Accoun
   if ($operation !== 'view') {
     return AccessResult::neutral();
   }
+  if ($account->hasPermission('view all domain entities everywhere')) {
+    return AccessResult::neutral();
+  }
   if (!($entity instanceof FieldableEntityInterface)) {
     return AccessResult::neutral();
   }
