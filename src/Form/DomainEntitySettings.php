@@ -208,7 +208,7 @@ class DomainEntitySettings extends FormBase {
 
     // Check if content of this type exist in DB, if so prompt a warning.
     $query = $this->entityTypeManager->getStorage($entity_type_id)->getQuery();
-    if ($has_fields && $query->range(0, 1)->count()->execute()) {
+    if ($has_fields && $query->accessCheck(FALSE)->range(0, 1)->count()->execute()) {
       $form['message'] = [
         '#theme_wrappers' => [
           'container' => [
