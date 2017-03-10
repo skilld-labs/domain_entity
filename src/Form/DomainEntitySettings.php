@@ -159,16 +159,15 @@ class DomainEntitySettings extends FormBase {
     $has_fields = FALSE;
     foreach ($bundles as $bundle_id => $bundle) {
       $bundle_label = $bundle['label'];
+      $settings = [];
       if ($field = $this->mapper->loadField($entity_type_id, $bundle_id)) {
         $settings = $field->getThirdPartySettings('domain_entity');
         $has_fields = TRUE;
       }
-      else {
-        $settings = [
-          'domains' => [],
-          'behavior' => DomainEntityMapper::BEHAVIOR_AUTO,
-        ];
-      }
+      $settings += [
+        'domains' => [],
+        'behavior' => DomainEntityMapper::BEHAVIOR_AUTO,
+      ];
       $form[$bundle_id] = [
         '#type' => 'details',
         '#title' => $bundle_label,
