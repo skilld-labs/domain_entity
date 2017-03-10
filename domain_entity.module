@@ -186,6 +186,14 @@ function domain_entity_allowed_entity_types() {
  * Alter the enabled entities select query, add domain access conditions.
  */
 function domain_entity_query_alter(AlterableInterface $query) {
+  if (defined('MAINTENANCE_MODE') && (MAINTENANCE_MODE == 'install' || MAINTENANCE_MODE == 'update')) {
+    // Do not fire at install & update time.
+    return;
+  }
+  if (!\Drupal::lock()->lockMayBeAvailable('router_rebuild')) {
+    // Do not fire at route rebuild time.
+    return;
+  }
   if (!\Drupal::config('domain_entity.settings')->get('bypass_access_conditions') && method_exists($query, 'getTables')) {
     // Have we to check access for this entity types.
     $allowed_types = domain_entity_allowed_entity_types();
