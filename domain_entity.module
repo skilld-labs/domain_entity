@@ -175,9 +175,13 @@ function domain_entity_get_user_available_domains(AccountInterface $account = NU
  *   Keyed array of enabled entity types.
  */
 function domain_entity_allowed_entity_types() {
-  /** @var \Drupal\domain_entity\DomainEntityMapper $mapper */
-  $mapper = \Drupal::service('domain_entity.mapper');
-  return $mapper->getEnabledEntityTypes();
+  $types = &drupal_static(__FUNCTION__);
+  if (!isset($types)) {
+    /** @var \Drupal\domain_entity\DomainEntityMapper $mapper */
+    $mapper = \Drupal::service('domain_entity.mapper');
+    $types = $mapper->getEnabledEntityTypes();
+  }
+  return $types;
 }
 
 /**
