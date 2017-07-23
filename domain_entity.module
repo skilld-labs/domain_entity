@@ -503,6 +503,7 @@ function domain_entity_domain_references_alter($query, $account, $context) {
     return;
   }
 
+  // Limit list of domains that can be used by requested user.
   $allowed = \Drupal::service('domain_access.manager')->getAccessValues($account);
   $query->condition('id', array_keys($allowed), 'IN');
 }
@@ -515,11 +516,8 @@ function domain_entity_field_widget_form_alter(&$element, FormStateInterface $fo
   if ($context['items']->getFieldDefinition()->getName() !== DomainEntityMapper::FIELD_NAME) {
     return;
   }
-  if (\Drupal::currentUser()->hasPermission('publish to any domain')) {
-    return;
-  }
 
   // Make affiliate domain selection required in case if user
   // have no "publish to any domain" permission to avoid ambiguity.
-  $element['#required'] = TRUE;
+  $element['#required'] = !\Drupal::currentUser()->hasPermission('publish to any domain');
 }
