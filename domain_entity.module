@@ -190,6 +190,7 @@ function domain_entity_allowed_entity_types() {
  * Alter the enabled entities select query, add domain access conditions.
  */
 function domain_entity_query_alter(AlterableInterface $query) {
+
   if (defined('MAINTENANCE_MODE') && (MAINTENANCE_MODE == 'install' || MAINTENANCE_MODE == 'update')) {
     // Do not fire at install & update time.
     return;
@@ -202,6 +203,7 @@ function domain_entity_query_alter(AlterableInterface $query) {
     // Have we to check access for this entity types.
     $allowed_types = domain_entity_allowed_entity_types();
     $entity_type_id = $query->getMetaData('entity_type');
+
     if (!isset($allowed_types[$entity_type_id])) {
       return;
     }
@@ -490,4 +492,20 @@ function _domain_entity_get_related_domains(EntityInterface $entity) {
   }
 
   return $domains;
+}
+
+/**
+ * Implements hook_domain_references_alter().
+ */
+function domain_entity_domain_references_alter($query, $account, $context) {
+
+  $user = User::load($account->id());
+  $affiliated_domains = [];
+  if ($user && $user->hasField(DOMAIN_ACCESS_FIELD)) {
+    foreach ($user->get(DOMAIN_ACCESS_FIELD) as $item) {
+      $affiliated_domains[] = $item->entity->id();
+    }
+  }
+
+  $query->condition('id', $affiliated_domains, 'IN');
 }
